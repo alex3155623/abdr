@@ -31,7 +31,7 @@ public class KVDB {
 			
             store = KVStoreFactory.getStore(new KVStoreConfig(storeName, hostName + ":" + hostPort));
             initBase(store);
-            
+            //dadada
             //printDB(store);
             store.close();
         } catch (Exception e) {
