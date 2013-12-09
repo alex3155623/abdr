@@ -9,7 +9,15 @@ import oracle.kv.ValueVersion;
 
 /** 
  * gestion d'une base de donnée
- * execution des transactions, va potentiellement gérer la migration
+ * execution des transactions, va gérer la migration
+ * 	- convertissement des clés principales pour avoir une clé principale unique pour la transaction
+ * 	- tu fais la transaction
+ * 	- une fois que c'est fait, on retransforme les catégories tel qu'ils étaient
+ * 
+ * 	- répartion de type anneau, + notification au moniteur des migrations
+ * 
+ * transformer = multiget, transaction write...
+ * 
  * @author 2600705
  *
  */
