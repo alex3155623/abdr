@@ -2,6 +2,8 @@ package db;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map.Entry;
+import java.util.SortedMap;
 
 import oracle.kv.KVStore;
 import oracle.kv.KVStoreConfig;
@@ -79,7 +81,7 @@ public class KVDB implements DBInterface {
 		}
         
         //foreach profile
-       /* for (int i = id; i < (id + nbProfile); i++) {
+       for (int i = id; i < (id + nbProfile); i++) {
         	profiles.add(profile + i);
         	//foreach object
             for (int j = 0; j < nbObjects; j++) {
@@ -92,7 +94,7 @@ public class KVDB implements DBInterface {
             		store.put(key, Value.createValue(new Integer(0).toString().getBytes()));
             	}
             }
-        }*/
+        }
     }
 	
 	
@@ -232,22 +234,16 @@ public class KVDB implements DBInterface {
 	
 	//TODO fairte un print qui marche sans hypothese(scan vraiment la DB)
 	public void printDB() {
-		Key key;
-
         //foreach profile
 		for (String profile : profiles) {
-			//foreach object
-			for (int j = 0; j < nbObjects; j++) {
-				//foreach attribute
-		    	for (int k = 0; k < nbInt + nbString; k++) {
-		    		List<String> att = new ArrayList<String>();
-		    		att.add(object + new Integer(j).toString());
-		    		att.add(attribute + new Integer(k).toString());
-		    		key = Key.createKey(profile, att);
-		    		ValueVersion valueVersion = store.get(key);
-	            	System.out.println("id = " + id + " clé = " + key + ", valeur = " + new String(valueVersion.getValue().getValue()));
-		    	}
-		    }
+			SortedMap<Key,ValueVersion> profileObjects = store.multiGet(Key.createKey(profile), null, null);
+			
+			for (Entry<Key, ValueVersion> profileObject : profileObjects.entrySet()) {
+				ValueVersion valueVersion = profileObject.getValue();
+				Key key = profileObject.getKey();
+				
+				System.out.println("id = " + id + " clé = " + key + ", valeur = " + new String(valueVersion.getValue().getValue()));
+			}
 		}
     }
 	

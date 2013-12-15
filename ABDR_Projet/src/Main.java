@@ -1,6 +1,7 @@
 import java.util.ArrayList;
 import java.util.List;
 
+import transaction.Data;
 import db.KVDB;
 
 
@@ -32,8 +33,8 @@ public class Main {
 	    		kvdbs.get(i).addNeighbor(db);
 	    	}
 	    }
-		
 	    
+
 	    System.out.println("_______________________________debut BASE 0_______________________________");
 		kvdbs.get(0).printDB();
 		//System.out.println("_______________________________debut BASE 1_______________________________");
