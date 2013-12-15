@@ -153,8 +153,21 @@ public class KVDB implements DBInterface {
 		}
 	}
 	
-	private void removeData (Data data) {
+	public void removeData (Data data) {
+		int dataId = data.getId();
+		int category = data.getCategory();
+		Key key;
 		
+		if (! profiles.contains(profile + category))
+			profiles.add (profile + category);
+		
+		for (int i = 0; i < nbInt + nbString; i++) {
+			List<String> att = new ArrayList<String>();
+    		att.add(object + new Integer(dataId).toString());
+    		att.add(attribute + new Integer(i).toString());
+    		key = Key.createKey(profile + category, att);
+    		store.delete(key);
+		}
 	}
 	
 	public Data getData (int dataId, int category) {
@@ -166,9 +179,7 @@ public class KVDB implements DBInterface {
     		att.add(attribute + new Integer(i).toString());
     		key = Key.createKey(profile + category, att);
     		ValueVersion valueVersion = null;
-    		
-    		//System.out.println("clé principale = " + profile + category + "clé secondaire = " + att);
-    		
+
     		try {
     			valueVersion = store.get(key);
     		} catch (Exception e) {
@@ -176,6 +187,9 @@ public class KVDB implements DBInterface {
     			e.printStackTrace();
     			return null;
     		}
+    		
+    		if (valueVersion == null)
+    			return null;
     		
     		if (i < nbInt)
     			data.getListNumber().add(Integer.valueOf(new String(valueVersion.getValue().getValue())));

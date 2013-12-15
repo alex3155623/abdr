@@ -28,7 +28,7 @@ public class TestKVDB {
 	}
 	
 	@Test
-	public void testPrivateAdd() {
+	public void testPrivateAddDelete() {
 		int category = 5;
 		int id = 42;
 		Data data = new Data();
@@ -61,6 +61,11 @@ public class TestKVDB {
 		assertEquals("s3", res.getListString().get(2));
 		assertEquals("s4", res.getListString().get(3));
 		assertEquals("s5", res.getListString().get(4));
+		
+		kvdbs.get(0).removeData(data);
+		
+		res = kvdbs.get(0).getData(id, category);
+		assertNull(res);
 	}
 	
 	
