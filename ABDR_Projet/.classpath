@@ -22,5 +22,6 @@
 	<classpathentry kind="lib" path="/users/nfs/Vrac/2600705/KV/kv-ce-2.1.54/kv-2.1.54/lib/kvclient.jar"/>
 	<classpathentry kind="lib" path="/users/nfs/Vrac/2600705/KV/kv-ce-2.1.54/kv-2.1.54/lib/kvstore.jar"/>
 	<classpathentry kind="lib" path="/users/nfs/Vrac/2600705/KV/kv-ce-2.1.54/kv-2.1.54/lib/servlet-api.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
