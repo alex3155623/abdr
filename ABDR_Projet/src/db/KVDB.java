@@ -9,6 +9,7 @@ import oracle.kv.KVStoreFactory;
 import oracle.kv.Key;
 import oracle.kv.Value;
 import oracle.kv.ValueVersion;
+import transaction.Data;
 import transaction.Operation;
 import transaction.OperationResult;
 
@@ -29,12 +30,18 @@ import transaction.OperationResult;
 
 public class KVDB implements DBInterface {
 	private KVStore store;
+	private int id;
     private String storeName = "kvstore";
     private String hostName = "localhost";
     private String hostPort = "5000";
-    private int id;
     
+    private final int nbAttributes = 10;
+    private final int nbObjects = 5;
+    private final int nbProfile = 5;
+
+    private List<KVDB> otherDBs = new ArrayList<KVDB>();
     private List<String> profiles = new ArrayList<String>();
+    
     
 	public KVDB() {
 		initBase();
@@ -60,7 +67,7 @@ public class KVDB implements DBInterface {
         String object = "O";
         String attribute = "A";
         Key key;
-        
+
         //instanciation de la base de donnée
 		try {
 			//TODO lire le fichier de conf pour avoir les info de configuration
@@ -70,12 +77,12 @@ public class KVDB implements DBInterface {
 		}
         
         //foreach profile
-        for (int i = id; i < (id + 5); i++) {
+        for (int i = id; i < (id + nbProfile); i++) {
         	profiles.add(profile + i);
         	//foreach object
-            for (int j = 0; j < 7; j++) {
+            for (int j = 0; j < nbObjects; j++) {
             	//foreach attribute
-            	for (int k = 0; k < 10; k++) {
+            	for (int k = 0; k < nbAttributes; k++) {
             		List<String> att = new ArrayList<String>();
             		att.add(object + new Integer(j).toString());
             		att.add(attribute + new Integer(k).toString());
@@ -109,7 +116,45 @@ public class KVDB implements DBInterface {
 		return null;
 	}
 	
+	private void transfuseData(List<String>profiles, KVDB target) {
+		for (String profile : profiles) {
+			//data 2 object
+			
+			
+			//add them to target
+			
+			//remove them from here
+		}
+	}
 	
+	
+	private void addData (Data data) {
+		int dataId = data.getId();
+		
+		
+	}
+	
+	private void removeData (Data data) {
+		
+	}
+	
+	private Data getData (int id) {
+		return null;
+	}
+	
+	private Data key2Data(Key key) {
+		Data result = new Data();
+		
+        String object = "O";
+        String attribute = "A";
+		
+    	for (int k = 0; k < nbAttributes; k++) {
+    		ValueVersion valueVersion = store.get(key);
+        	System.out.println("id = " + id + " clé = " + key + ", valeur = " + new String(valueVersion.getValue().getValue()));
+    	}
+		
+		return result;
+	}
 	
 	/**thread qui doit passer les jetons dans un anneau
 		si moi même je ne fais rien, j'envoi un jeton qui doit faire le tour
@@ -120,6 +165,10 @@ public class KVDB implements DBInterface {
 	*/
 	
 	
+	//TODO remove
+	public void addNeighbor(KVDB newDB) {
+		otherDBs.add(newDB);
+	}
 	
 	public void printDB() {
 		Key key;
@@ -129,12 +178,12 @@ public class KVDB implements DBInterface {
         //foreach profile
 		for (String profile : profiles) {
 			//foreach object
-			for (int j = 0; j < 7; j++) {
+			for (int j = 0; j < nbObjects; j++) {
 				//foreach attribute
-		    	for (int k = 0; k < 10; k++) {
+		    	for (int k = 0; k < nbAttributes; k++) {
 		    		List<String> att = new ArrayList<String>();
 		    		att.add(object + new Integer(j).toString());
-		    		att.add(attribute + new Integer(j).toString());
+		    		att.add(attribute + new Integer(k).toString());
 		    		key = Key.createKey(profile, att);
 		    		ValueVersion valueVersion = store.get(key);
 	            	System.out.println("id = " + id + " clé = " + key + ", valeur = " + new String(valueVersion.getValue().getValue()));

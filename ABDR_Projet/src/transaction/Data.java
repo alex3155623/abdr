@@ -1,18 +1,27 @@
 package transaction;
 
 public class Data {
+	private int id;
+	
 	private String s1;
 	private String s2;
 	private String s3;
 	private String s4;
 	private String s5;
 	
+	private int i1;
 	private int i2;
 	private int i3;
 	private int i4;
 	private int i5;
 	
-	private int i1;
+	
+	public int getId() {
+		return id;
+	}
+	public void setId(int id) {
+		this.id = id;
+	}
 	public String getS1() {
 		return s1;
 	}
