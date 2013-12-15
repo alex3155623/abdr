@@ -2,6 +2,7 @@ package transaction;
 
 public class Data {
 	private int id;
+	private int category;
 	
 	private String s1;
 	private String s2;
@@ -21,6 +22,12 @@ public class Data {
 	}
 	public void setId(int id) {
 		this.id = id;
+	}
+	public int getCategory() {
+		return category;
+	}
+	public void setCategory(int category) {
+		this.category = category;
 	}
 	public String getS1() {
 		return s1;

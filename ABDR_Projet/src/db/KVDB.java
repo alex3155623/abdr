@@ -165,6 +165,14 @@ public class KVDB implements DBInterface {
 	*/
 	
 	
+	@Override
+	public void injectData(List<Data> data) {
+		// TODO Auto-generated method stub
+		
+	}
+	
+	
+	
 	//TODO remove
 	public void addNeighbor(KVDB newDB) {
 		otherDBs.add(newDB);
