@@ -25,4 +25,10 @@ public class Monitor implements MonitorInterface{
 		// TODO Auto-generated method stub
 		return null;
 	}
+
+	@Override
+	public void notifyMigration(int idDest, List<String> products) {
+		// TODO Auto-generated method stub
+		
+	}
 }
