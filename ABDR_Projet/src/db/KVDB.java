@@ -81,7 +81,7 @@ public class KVDB implements DBInterface {
 		}
         
         //foreach profile
-       for (int i = id; i < (id + nbProfile); i++) {
+       for (int i = id * nbProfile; i < (id * nbProfile) + nbProfile; i++) {
         	profiles.add(profile + i);
         	//foreach object
             for (int j = 0; j < nbObjects; j++) {
@@ -232,7 +232,6 @@ public class KVDB implements DBInterface {
 		otherDBs.add(newDB);
 	}
 	
-	//TODO fairte un print qui marche sans hypothese(scan vraiment la DB)
 	public void printDB() {
         //foreach profile
 		for (String profile : profiles) {

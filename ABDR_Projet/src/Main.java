@@ -37,8 +37,8 @@ public class Main {
 
 	    System.out.println("_______________________________debut BASE 0_______________________________");
 		kvdbs.get(0).printDB();
-		//System.out.println("_______________________________debut BASE 1_______________________________");
-		//kvdbs.get(1).printDB();
+		System.out.println("_______________________________debut BASE 1_______________________________");
+		kvdbs.get(1).printDB();
 	    
 	    //test migration
 
