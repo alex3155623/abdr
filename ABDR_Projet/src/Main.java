@@ -1,6 +1,10 @@
 import java.util.ArrayList;
 import java.util.List;
 
+import application.Application;
+
+import monitor.Monitor;
+
 import transaction.Data;
 import db.KVDB;
 
@@ -54,8 +58,10 @@ public class Main {
 	    
 		
 	    //TODO create monitors
+		Monitor monitor = new Monitor(kvdbs);
 	    
 	    //TODO create applications
+		Application.start(monitor);
 	    
 	    //execute benchmark
 	}

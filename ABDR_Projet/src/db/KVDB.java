@@ -5,10 +5,14 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.SortedMap;
 
+import oracle.kv.DurabilityException;
+import oracle.kv.FaultException;
 import oracle.kv.KVStore;
 import oracle.kv.KVStoreConfig;
 import oracle.kv.KVStoreFactory;
 import oracle.kv.Key;
+import oracle.kv.OperationExecutionException;
+import oracle.kv.OperationFactory;
 import oracle.kv.Value;
 import oracle.kv.ValueVersion;
 import transaction.Data;
@@ -68,6 +72,7 @@ public class KVDB implements DBInterface {
 		initBase();
 	}
 	
+	public List<String> getProfiles(){ return profiles;}
 	
 	private void initBase() {
         Key key;
@@ -101,10 +106,21 @@ public class KVDB implements DBInterface {
 	@Override
 	public List<OperationResult> executeOperations(List<Operation> operations) {
 		List<OperationResult> result = null;
-		
+		List<oracle.kv.Operation> opList = convertOperations(operations);
 		//convert operations to kvstore operations
-		
-		
+	
+	    try {
+			List<oracle.kv.OperationResult> res = store.execute(opList);
+		} catch (DurabilityException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (OperationExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (FaultException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		//1 thread par execution
 		
 		//if the operation has multiple key : 
@@ -120,7 +136,19 @@ public class KVDB implements DBInterface {
 	}
 	
 	private List<oracle.kv.Operation> convertOperations (List<Operation> operations) {
-		return null;
+		List<oracle.kv.Operation> opList = new ArrayList<oracle.kv.Operation>();
+		
+		OperationFactory opFactory = store.getOperationFactory();
+		for (int i = 0 ; i < operations.size() ; i++) {
+	       // Construct the key
+			//opList.add(
+					//opFactory.createPutIfVersion(KEY, 
+					//Valeur,
+	              //version,
+	              //ReturnValueVersion.Choice.VALUE,
+	              //true);
+	      }
+		return opList;
 	}
 	
 	private void transfuseData(List<String>profiles, KVDB target) {

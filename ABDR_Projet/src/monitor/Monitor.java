@@ -18,11 +18,60 @@ import db.KVDB;
  */
 //dadaad
 public class Monitor implements MonitorInterface{
+	/**
+	 * Server List
+	 */
 	private List<KVDB> servers = new ArrayList<KVDB>();
 
+	/**
+	 * Monitor Constructor 
+	 * @param kvdbs
+	 */
+	public Monitor(List<KVDB> kvdbs) {
+		// TODO Auto-generated constructor stub
+		servers = kvdbs;
+	}
+
+	/**
+	 *  Execute a list of operation
+	 */
 	@Override
 	public OperationResult executeOperations(List<Operation> operations) {
-		// TODO Auto-generated method stub
+	
+		findProfile(operations);
+		// search the good kvstore
+		KVDB store = findKVDB(operations);
+		List<OperationResult> listOpR = store.executeOperations(operations);
+		for(OperationResult or :listOpR)
+		{
+			if(!or.isSuccess())
+				return or;
+		}
+		//  A VOIR POUR LA VALEUR DE RETOUR
+		return null;
+	}
+
+	private int findProfile(List<Operation> operations) {
+		int tmp = 0;
+		int profile = 0;
+		for(Operation op : operations){
+			tmp = op.getData().getCategory();
+			if(tmp == profile || profile==0)
+				profile = tmp;
+			else
+				// Plusieurs profile touché dans la transaction;
+				;
+		}
+		
+		return profile;
+		
+	}
+	
+	private KVDB findKVDB(List<Operation> operations){
+		for (KVDB k : servers){
+			if(k.getProfiles().contains("P"+findProfile(operations)))
+				  return k;
+		}
 		return null;
 	}
 
