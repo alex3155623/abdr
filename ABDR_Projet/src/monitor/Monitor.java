@@ -37,8 +37,8 @@ public class Monitor implements MonitorInterface{
 	 */
 	@Override
 	public OperationResult executeOperations(List<Operation> operations) {
-	
-		findProfile(operations);
+		//sort the transaction
+		
 		// search the good kvstore
 		KVDB store = findKVDB(operations);
 		List<OperationResult> listOpR = store.executeOperations(operations);
@@ -59,7 +59,7 @@ public class Monitor implements MonitorInterface{
 			if(tmp == profile || profile==0)
 				profile = tmp;
 			else
-				// Plusieurs profile touchŽ dans la transaction;
+				// Plusieurs profile touchï¿½ dans la transaction;
 				;
 		}
 		

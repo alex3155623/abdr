@@ -17,5 +17,6 @@ public interface DBInterface {
 		//- le jeton contient les tables associés
 	
 	void injectData(List<Data> data);
+	List<String> getProfiles();
 	
 }

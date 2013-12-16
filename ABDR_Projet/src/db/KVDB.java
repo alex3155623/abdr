@@ -72,6 +72,7 @@ public class KVDB implements DBInterface {
 		initBase();
 	}
 	
+	@Override
 	public List<String> getProfiles(){ return profiles;}
 	
 	private void initBase() {
@@ -105,6 +106,16 @@ public class KVDB implements DBInterface {
 	
 	@Override
 	public List<OperationResult> executeOperations(List<Operation> operations) {
+		//synchronized, verroux lecteur ecrivain
+		
+		//1 verroux lecteur ecrivain par catégorie 
+			//-> pourri les perf, rend sequentiel des acces potentiellement concurrent
+		
+		//1 verroux par objet
+		
+		
+		
+		
 		List<OperationResult> result = null;
 		List<oracle.kv.Operation> opList = convertOperations(operations);
 		//convert operations to kvstore operations
@@ -155,10 +166,14 @@ public class KVDB implements DBInterface {
 		for (String profile : profiles) {
 			//data 2 object
 			
-			
 			//add them to target
 			
 			//remove them from here
+			
+			/**
+			 * 
+			 * 
+			 */
 		}
 	}
 	
