@@ -54,11 +54,9 @@ public class Monitor implements MonitorInterface{
 		//sort the transaction
 		operations = sortTransaction(operations);
 		
-		// search the good kvstore
-		KVDB store = findKVDB(operations);
-		List<OperationResult> listOpR = store.executeOperations(operations);
-		
-		return listOpR;
+		// search the good kvstore and execute opration in kvdb
+		return findKVDB(operations);
+	
 	}
 
 	private List<Operation> sortTransaction(List<Operation> operations) {
@@ -97,12 +95,29 @@ public class Monitor implements MonitorInterface{
 		
 	}
 	
-	private KVDB findKVDB(List<Operation> operations){
+	private List<OperationResult> findKVDB(List<Operation> operations){
+		ArrayList<Operation> listOp = new ArrayList<Operation>();
+		ArrayList<String> listProfiles = findProfile(operations);
+		List<OperationResult> listOpR = null;
+		// pour chaque serveur 
 		for (KVDB k : servers){
-			if(k.getProfiles().contains(findProfile(operations)))
-				  return k;
+			 // pour chaque profil diffŽrent des opŽrations
+			for(String profile : listProfiles){
+				// On cherche si le profil est sur le serveur considere
+				if(k.getProfiles().contains(profile)){
+					// Si oui pour chaque operation de la liste on cree une nouvelle liste d'operation
+					for(Operation op : listOp){
+						if("P"+op.getData().getCategory() == profile)
+							listOp.add(op);
+					}
+				}
+			}
+			// Si le profil a ete trouve sur le serveur on l'execute
+			if(listOp.size() > 0 )
+				listOpR = k.executeOperations(operations);
+			
 		}
-		return null;
+		return listOpR;
 	}
 
 	@Override
