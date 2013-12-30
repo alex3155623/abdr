@@ -1,6 +1,8 @@
 package monitor;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import transaction.Operation;
@@ -24,6 +26,10 @@ public class Monitor implements MonitorInterface{
 	private List<KVDB> servers = new ArrayList<KVDB>();
 
 	/**
+	 * Flag for alert migration
+	 */
+	private boolean isMigration = false;
+	/**
 	 * Monitor Constructor 
 	 * @param kvdbs
 	 */
@@ -36,48 +42,85 @@ public class Monitor implements MonitorInterface{
 	 *  Execute a list of operation
 	 */
 	@Override
-	public OperationResult executeOperations(List<Operation> operations) {
+	public List<OperationResult> executeOperations(List<Operation> operations) {
+		
+		while(isMigration){
+			try{
+				wait();
+			}catch(InterruptedException ie) {
+                ie.printStackTrace();
+            }
+		}
 		//sort the transaction
+		operations = sortTransaction(operations);
 		
 		// search the good kvstore
 		KVDB store = findKVDB(operations);
 		List<OperationResult> listOpR = store.executeOperations(operations);
-		for(OperationResult or :listOpR)
-		{
-			if(!or.isSuccess())
-				return or;
-		}
-		//  A VOIR POUR LA VALEUR DE RETOUR
-		return null;
+		
+		return listOpR;
 	}
 
-	private int findProfile(List<Operation> operations) {
+	private List<Operation> sortTransaction(List<Operation> operations) {
+		// TODO Auto-generated method stub
+		Collections.sort(operations, new Comparator<Operation>() {
+			  public int compare(Operation op1, Operation op2) {
+			     int data1 = op1.getData().getCategory();
+			     int data2 = op2.getData().getCategory();
+			     if (data2< data1) return -1;
+			     else if(data2== data1 ) return 0;
+			     else return 1;
+			  }
+		});
+		
+		return operations;
+
+	}
+
+	private ArrayList<String> findProfile(List<Operation> operations) {
 		int tmp = 0;
 		int profile = 0;
+		ArrayList<String> list = new ArrayList<String>();
 		for(Operation op : operations){
 			tmp = op.getData().getCategory();
-			if(tmp == profile || profile==0)
+			if(tmp == profile || profile==0){
 				profile = tmp;
-			else
+				list.add("P"+profile);
+			}
+			else{
 				// Plusieurs profile touch� dans la transaction;
-				;
+				list.add("P"+tmp);
+			}
 		}
 		
-		return profile;
+		return list;
 		
 	}
 	
 	private KVDB findKVDB(List<Operation> operations){
 		for (KVDB k : servers){
-			if(k.getProfiles().contains("P"+findProfile(operations)))
+			if(k.getProfiles().contains(findProfile(operations)))
 				  return k;
 		}
 		return null;
 	}
 
 	@Override
-	public void notifyMigration(int idDest, List<String> products) {
+	public synchronized void notifyMigration() {
 		// TODO Auto-generated method stub
-		
+		setMigration(true);
+	}
+	
+	public synchronized void notifyEndMigration(){
+		setMigration(false);
+		notifyAll();
+	}
+
+	public boolean isMigration() {
+		return isMigration;
+	}
+
+	public void setMigration(boolean isMigration) {
+		this.isMigration = isMigration;
 	}
 }
