@@ -187,8 +187,7 @@ public class KVDB implements DBInterface {
 	
 	private List<OperationResult> KVResult2OperationResult (List<oracle.kv.OperationResult> kvResult) {
 		List <OperationResult> operationResult = new ArrayList<OperationResult>();
-		
-		for (int i = 0; i < kvResult.size() / (nbInt + nbString); i += 10) {
+		for (int i = 0; i < kvResult.size(); i += 10) {
 			operationResult.add(new OperationResult(kvResult.get(i).getSuccess(), null));
 		}
 
