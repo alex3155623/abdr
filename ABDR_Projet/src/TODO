@@ -1,0 +1,44 @@
+TODO : 
+
+- détecter la surcharge/qu'on ne fait rien
+
+
+- faire le système de répartition de charge
+	- il faut un thread qui tourne en fond
+	- ce thread doit gérer la migration et donc concurrence avec le main thread
+
+
+- faire l'algorithme de migration
+	- il faut que la solution fonctionne : 
+		- en redirigeant les requetes qui ne sont pas sur le bon moniteur
+			- cela arrive pendant la migration
+		
+
+
+
+################# réflexions
+
+- 2 types de migration : 
+	- migration forcée (transaction multiclé)
+		- un kvdb demande au kvdbhash, la migration de target vers lui
+	- migration de répartition de charge
+		- un kvdb ajoute au jeton ce dont il n'a pas besoin (noms de catégories)
+		- le propriétaire du jeton demande la migration vers lui des catégories dans jeton aux kvdbhash
+
+	- avec cette façon de procéder, les 2 types de migrations utilisent le même système pour migrer
+
+
+
+- initiation de migration : 
+	- le kvdb qui veut faire une migration prévient le kvdb hash de la volonté de migration
+	- le kvdb hash lui répond en lui donnant le kvdb ayant la ressource + maj de qui a quoi dans le kvdb hash
+	- le kvdb fait migration
+	
+	- pendant les migrations, il faut mutex pour interdire de faire certains types de transaction : 
+		- pour celui qui donne, il s'en fout, il se met à déleguer vers le new dès le début (il demande au hash à qui déléguer)
+		- pour celui qui reçoit, il doit avoir une protection pour ne pas executer de transactions sur les données migrées
+			- les transactions en attentesdfsdfdf
+
+
+	
+		
