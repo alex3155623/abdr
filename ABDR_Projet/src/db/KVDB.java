@@ -133,23 +133,25 @@ public class KVDB implements DBInterface {
 			//convert them to one category
 			//execute transaction
 			//retransform to multiple key
+			boolean hasExecuted = false;
 			List<oracle.kv.Operation> opList = convertOperations(operations);
-			
-		    try {
-				List<oracle.kv.OperationResult> res = store.execute(opList);
-				result.addAll(KVResult2OperationResult(res));
-				
-				
-			} catch (DurabilityException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (OperationExecutionException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (FaultException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			do {
+			    try {
+					List<oracle.kv.OperationResult> res = store.execute(opList);
+					result.addAll(KVResult2OperationResult(res));
+					hasExecuted = true;
+					
+				} catch (DurabilityException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (OperationExecutionException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (FaultException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			} while (! hasExecuted);
 		}
 		
 		return result;
@@ -362,6 +364,9 @@ public class KVDB implements DBInterface {
 	
 	@Override
 	public void closeDB() {
+		for (String profile : this.profiles) {
+			store.multiDelete(Key.createKey(this.profile + profile), null, null);
+		}
 		store.close();
 	}
 }

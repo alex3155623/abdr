@@ -11,10 +11,6 @@ import db.KVDB;
 
 public class Main {
 	
-	
-	//public static void 
-	
-	
 	public static void main(String[]args) {
 		String storeName = "kvstore";
 	    String hostName = "ari-31-201-02";
@@ -38,19 +34,6 @@ public class Main {
 	    	}
 	    }
 	    
-
-	    System.out.println("_______________________________debut BASE 0_______________________________");
-		kvdbs.get(0).printDB();
-		System.out.println("_______________________________debut BASE 1_______________________________");
-		kvdbs.get(1).printDB();
-	    
-	    //test migration
-
-	    
-		//System.out.println("_______________________________debut BASE 0_______________________________");
-		//kvdbs.get(0).printDB();
-		//System.out.println("_______________________________debut BASE 1_______________________________");
-		//kvdbs.get(1).printDB();
 
 		kvdbs.get(0).closeDB();
 		kvdbs.get(1).closeDB();
