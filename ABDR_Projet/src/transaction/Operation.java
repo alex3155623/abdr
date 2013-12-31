@@ -1,7 +1,7 @@
 package transaction;
 
-public interface Operation {
-	OperationResult execute();
+import oracle.kv.Key;
 
+public interface Operation {
 	Data getData();
 }

@@ -1,17 +1,18 @@
 package transaction;
 
+import oracle.kv.Key;
+
 public class ReadOperation implements Operation {
 
-	@Override
-	public OperationResult execute() {
-		// TODO Auto-generated method stub
-		return null;
-	}
+	private Data data;
 
+	public ReadOperation(Data d) {
+		data = d;
+	}
+	
 	@Override
 	public Data getData() {
 		// TODO Auto-generated method stub
-		return null;
+		return data;
 	}
-
 }

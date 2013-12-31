@@ -7,8 +7,16 @@ package transaction;
  */
 public class OperationResult {
 	private boolean isSuccess = false;
-	
+	private Data data;
 
+	public OperationResult() {}
+	
+	public OperationResult(boolean isSuccess, Data data) {
+		this.isSuccess = isSuccess;
+		this.data = data;
+	}
+	
+	
 	public boolean isSuccess() {
 		return isSuccess;
 	}
@@ -17,5 +25,12 @@ public class OperationResult {
 		this.isSuccess = isSuccess;
 	}
 	
-	//TODO structure contenant resultat
+	public Data getData() {
+		return data;
+	}
+
+	public void setData(Data data) {
+		this.data = data;
+	}
+
 }

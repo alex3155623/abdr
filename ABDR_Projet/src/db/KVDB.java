@@ -11,6 +11,7 @@ import oracle.kv.KVStore;
 import oracle.kv.KVStoreConfig;
 import oracle.kv.KVStoreFactory;
 import oracle.kv.Key;
+import oracle.kv.KeyRange;
 import oracle.kv.OperationExecutionException;
 import oracle.kv.OperationFactory;
 import oracle.kv.Value;
@@ -18,6 +19,8 @@ import oracle.kv.ValueVersion;
 import transaction.Data;
 import transaction.Operation;
 import transaction.OperationResult;
+import transaction.ReadOperation;
+import transaction.WriteOperation;
 
 /** 
  * gestion d'une base de donnée
@@ -107,60 +110,107 @@ public class KVDB implements DBInterface {
 	@Override
 	public List<OperationResult> executeOperations(List<Operation> operations) {
 		//synchronized, verroux lecteur ecrivain
-		
 		//1 verroux lecteur ecrivain par catégorie 
 			//-> pourri les perf, rend sequentiel des acces potentiellement concurrent
-		
 		//1 verroux par objet
+			//bof
 		
 		
+		List<OperationResult> result = new ArrayList<OperationResult>();
 		
-		
-		List<OperationResult> result = null;
-		List<oracle.kv.Operation> opList = convertOperations(operations);
-		//convert operations to kvstore operations
-	
-	    try {
-			List<oracle.kv.OperationResult> res = store.execute(opList);
-		} catch (DurabilityException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (OperationExecutionException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (FaultException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		//si c'est un simple get, on fait un multiget sur la clé
+		if ((operations.size() == 1) && (operations.get(0) instanceof ReadOperation)) {
+			result = getData(operations.get(0).getData());
 		}
-		//1 thread par execution
-		
-		//if the operation has multiple key : 
+		else {
+			//sinon, c'est une transaction
+			
+			//if the operation has multiple key : 
 			//fetch tables
 			//convert them to one category
 			//execute transaction
 			//retransform to multiple key
-		
-		
-		
+			List<oracle.kv.Operation> opList = convertOperations(operations);
+			
+		    try {
+				List<oracle.kv.OperationResult> res = store.execute(opList);
+				result.addAll(KVResult2OperationResult(res));
+				
+				
+			} catch (DurabilityException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (OperationExecutionException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (FaultException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 		
 		return result;
 	}
 	
-	private List<oracle.kv.Operation> convertOperations (List<Operation> operations) {
-		List<oracle.kv.Operation> opList = new ArrayList<oracle.kv.Operation>();
+	/**
+	 * Get data object associated with an id and category
+	 * @param data
+	 * @return
+	 */
+	private List<OperationResult> getData (Data data) {
+		int dataId = data.getId();
+		int category = data.getCategory();
+		List <OperationResult> operationResult = new ArrayList<OperationResult>();
+
+		SortedMap<Key,ValueVersion> profileObjects = store.multiGet(Key.createKey(profile + category), new KeyRange (object + new Integer(dataId).toString()), null);
+
+		if (profileObjects.size() != (nbString + nbInt)) {
+			operationResult.add(new OperationResult(false, null));
+			return operationResult;
+		}
 		
-		OperationFactory opFactory = store.getOperationFactory();
-		for (int i = 0 ; i < operations.size() ; i++) {
-	       // Construct the key
-			//opList.add(
-					//opFactory.createPutIfVersion(KEY, 
-					//Valeur,
-	              //version,
-	              //ReturnValueVersion.Choice.VALUE,
-	              //true);
-	      }
-		return opList;
+		int i = 0;
+		for (Entry<Key, ValueVersion> profileObject : profileObjects.entrySet()) {
+			String value = new String (profileObject.getValue().getValue().getValue());
+			if (i < nbInt)
+				data.getListNumber().add(Integer.valueOf(value));
+    		else
+    			data.getListString().add(value);
+    		i++;
+		}
+		
+		operationResult.add(new OperationResult(true, data));
+		
+		return operationResult;
 	}
+	
+	
+	private List<OperationResult> KVResult2OperationResult (List<oracle.kv.OperationResult> kvResult) {
+		List <OperationResult> operationResult = new ArrayList<OperationResult>();
+		
+		for (int i = 0; i < kvResult.size() / (nbInt + nbString); i += 10) {
+			operationResult.add(new OperationResult(kvResult.get(i).getSuccess(), null));
+		}
+
+		return operationResult;
+	}
+	
+	
+	private List<oracle.kv.Operation> convertOperations (List<Operation> operations) {
+		List<oracle.kv.Operation> operationList = new ArrayList<oracle.kv.Operation>();
+
+		for (Operation operation : operations) {
+			if (operation instanceof WriteOperation) {
+				operationList.addAll(addData(operation.getData()));
+			}
+			else {
+				operationList.addAll(removeData(operation.getData()));
+			}
+		}
+		
+		return operationList;
+	}
+	
 	
 	private void transfuseData(List<String>profiles, KVDB target) {
 		for (String profile : profiles) {
@@ -177,10 +227,17 @@ public class KVDB implements DBInterface {
 		}
 	}
 	
-	public void addData (Data data) {
+	/**
+	 * Create a list of operations to add a data object
+	 * @param data
+	 * @return
+	 */
+	private List<oracle.kv.Operation> addData (Data data) {
 		int dataId = data.getId();
 		int category = data.getCategory();
 		Key key;
+		OperationFactory operationFactory = store.getOperationFactory();
+		List<oracle.kv.Operation> operationList = new ArrayList<oracle.kv.Operation>();
 		
 		if (! profiles.contains(profile + category))
 			profiles.add (profile + category);
@@ -190,18 +247,27 @@ public class KVDB implements DBInterface {
     		att.add(object + new Integer(dataId).toString());
     		att.add(attribute + new Integer(i).toString());
     		key = Key.createKey(profile + category, att);
-    		//System.out.println("principal = " + profile + category + "key att = " + att);
+    		
     		if (i < nbInt)
-    			store.put(key, Value.createValue(data.getListNumber().get(i).toString().getBytes()));
+    			operationList.add(operationFactory.createPut(key, Value.createValue(data.getListNumber().get(i).toString().getBytes())));
     		else
-    			store.put(key, Value.createValue(data.getListString().get(i - nbInt).toString().getBytes()));
+    			operationList.add(operationFactory.createPut(key, Value.createValue(data.getListString().get(i - nbInt).toString().getBytes())));
 		}
+		
+		return operationList;
 	}
 	
-	public void removeData (Data data) {
+	/**
+	 * Create a list of operations to delete a data object
+	 * @param data
+	 * @return
+	 */
+	private List<oracle.kv.Operation> removeData (Data data) {
 		int dataId = data.getId();
 		int category = data.getCategory();
 		Key key;
+		OperationFactory operationFactory = store.getOperationFactory();
+		List<oracle.kv.Operation> operationList = new ArrayList<oracle.kv.Operation>();
 		
 		if (! profiles.contains(profile + category))
 			profiles.add (profile + category);
@@ -211,50 +277,12 @@ public class KVDB implements DBInterface {
     		att.add(object + new Integer(dataId).toString());
     		att.add(attribute + new Integer(i).toString());
     		key = Key.createKey(profile + category, att);
-    		store.delete(key);
-		}
-	}
-	
-	public Data getData (int dataId, int category) {
-		Data data = new Data();
-		Key key;
-		for (int i = 0; i < nbInt + nbString; i++) {
-			List<String> att = new ArrayList<String>();
-    		att.add(object + new Integer(dataId).toString());
-    		att.add(attribute + new Integer(i).toString());
-    		key = Key.createKey(profile + category, att);
-    		ValueVersion valueVersion = null;
-
-    		try {
-    			valueVersion = store.get(key);
-    		} catch (Exception e) {
-    			System.out.println("DAFUK");
-    			e.printStackTrace();
-    			return null;
-    		}
-    		
-    		if (valueVersion == null)
-    			return null;
-    		
-    		if (i < nbInt)
-    			data.getListNumber().add(Integer.valueOf(new String(valueVersion.getValue().getValue())));
-    		else
-    			data.getListString().add(new String(valueVersion.getValue().getValue()));
+    		operationList.add(operationFactory.createDelete(key));
 		}
 		
-		return data;
+		return operationList;
 	}
 	
-	private Data key2Data(Key key) {
-		Data result = new Data();
-		
-    	for (int k = 0; k < nbInt + nbString; k++) {
-    		ValueVersion valueVersion = store.get(key);
-        	System.out.println("id = " + id + " clé = " + key + ", valeur = " + new String(valueVersion.getValue().getValue()));
-    	}
-		
-		return result;
-	}
 	
 	/**thread qui doit passer les jetons dans un anneau
 		si moi même je ne fais rien, j'envoi un jeton qui doit faire le tour
@@ -275,6 +303,7 @@ public class KVDB implements DBInterface {
 		otherDBs.add(newDB);
 	}
 	
+	@Override
 	public void printDB() {
         //foreach profile
 		for (String profile : profiles) {
@@ -289,6 +318,7 @@ public class KVDB implements DBInterface {
 		}
     }
 	
+	@Override
 	public void closeDB() {
 		store.close();
 	}

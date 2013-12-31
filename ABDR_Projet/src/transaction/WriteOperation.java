@@ -1,5 +1,7 @@
 package transaction;
 
+import oracle.kv.Key;
+
 public class WriteOperation implements Operation {
 
 	private Data data;
@@ -8,16 +10,9 @@ public class WriteOperation implements Operation {
 		data = d;
 	}
 
-	@Override
-	public OperationResult execute() {
-		// TODO Auto-generated method stub
-		return null;
-	}
 
 	@Override
 	public Data getData() {
-		// TODO Auto-generated method stub
-		return null;
+		return data;
 	}
-
 }
