@@ -241,6 +241,23 @@ public class TestKVDB {
 		assertTrue(! results.get(0).isSuccess());
 	}
 	
-	
+	@Test
+	public void testTransfusion() {
+		List<String> transfusedProfiles = new ArrayList<String>();
+		transfusedProfiles.add("1");
+		transfusedProfiles.add("3");
+		
+		System.out.println(" ------------------------DB0 avant");
+		kvdbs.get(0).printDB();
+		System.out.println(" ------------------------DB1 avant");
+		kvdbs.get(1).printDB();
+		
+		kvdbs.get(0).transfuseData(transfusedProfiles, kvdbs.get(1));
+		
+		System.out.println(" ------------------------DB0 apres");
+		kvdbs.get(0).printDB();
+		System.out.println(" ------------------------DB1 apres");
+		kvdbs.get(1).printDB();
+	}
 
 }

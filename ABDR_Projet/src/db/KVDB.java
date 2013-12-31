@@ -17,6 +17,7 @@ import oracle.kv.OperationFactory;
 import oracle.kv.Value;
 import oracle.kv.ValueVersion;
 import transaction.Data;
+import transaction.DeleteOperation;
 import transaction.Operation;
 import transaction.OperationResult;
 import transaction.ReadOperation;
@@ -76,7 +77,9 @@ public class KVDB implements DBInterface {
 	}
 	
 	@Override
-	public List<String> getProfiles(){ return profiles;}
+	public List<String> getProfiles() { 
+		return profiles;
+	}
 	
 	private void initBase() {
         Key key;
@@ -161,7 +164,7 @@ public class KVDB implements DBInterface {
 		int dataId = data.getId();
 		int category = data.getCategory();
 		List <OperationResult> operationResult = new ArrayList<OperationResult>();
-
+		
 		SortedMap<Key,ValueVersion> profileObjects = store.multiGet(Key.createKey(profile + category), new KeyRange (object + new Integer(dataId).toString()), null);
 
 		if (profileObjects.size() != (nbString + nbInt)) {
@@ -210,20 +213,61 @@ public class KVDB implements DBInterface {
 		return operationList;
 	}
 	
-	
-	private void transfuseData(List<String>profiles, KVDB target) {
+	/**
+	 * When overloaded, and having a token, transfuse to the token unused tables
+	 * @param profiles
+	 * @param target
+	 */
+	public void transfuseData(List<String>profiles, KVDB target) {
+		//get all data
+		
 		for (String profile : profiles) {
-			//data 2 object
+			List<Data> unusedData = new ArrayList<Data>();
+			unusedData.addAll(getAllDataFromProfile(profile));
 			
-			//add them to target
+			//data 2 transaction
+			List<Operation> transfuseOperations = new ArrayList<Operation>();
+			for (Data data : unusedData) {
+				transfuseOperations.add(new WriteOperation(data));
+			}
 			
-			//remove them from here
+			//add them to target (inject)
+			target.injectData(transfuseOperations);
 			
-			/**
-			 * 
-			 * 
-			 */
+			//remove them from here (delete)
+			List<Operation> deleteOperations = new ArrayList<Operation>();
+			for (Data data : unusedData) {
+				deleteOperations.add(new DeleteOperation(data));
+			}
+			executeOperations(deleteOperations);
 		}
+	}
+	
+	
+	private List<Data> getAllDataFromProfile(String profile) {
+		List<Data> datas = new ArrayList<Data>();
+
+		SortedMap<Key,ValueVersion> profileObjects = store.multiGet(Key.createKey(this.profile + profile), null, null);
+		int i = 0;
+		Data data = new Data();
+		for (Entry<Key, ValueVersion> profileObject : profileObjects.entrySet()) {
+			String value = new String (profileObject.getValue().getValue().getValue());
+			if (i < nbInt)
+				data.getListNumber().add(Integer.valueOf(value));
+    		else
+    			data.getListString().add(value);
+    		i++;
+    		
+    		if (i == 10) {
+				i = 0;
+				data.setId(Integer.valueOf(profileObject.getKey().getMinorPath().get(0).substring(1)));
+				data.setCategory(Integer.valueOf(profileObject.getKey().getMajorPath().get(0).substring(1)));
+				datas.add(data);
+				data = new Data();
+    		}
+		}
+		
+		return datas;
 	}
 	
 	/**
@@ -292,9 +336,8 @@ public class KVDB implements DBInterface {
 	*/
 	
 	@Override
-	public void injectData(List<Data> data) {
-		// TODO Auto-generated method stub
-		
+	public void injectData(List<Operation> data) {
+		executeOperations(data);
 	}
 	
 	//TODO remove

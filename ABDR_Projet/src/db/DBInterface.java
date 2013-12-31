@@ -16,7 +16,8 @@ public interface DBInterface {
 	//void attendre les jetons
 		//- le jeton contient les tables associés
 	
-	void injectData(List<Data> data);
+	void transfuseData(List<String>profiles, KVDB target);
+	void injectData(List<Operation> data);
 	
 	// le monitor en a besoin
 	List<String> getProfiles();
