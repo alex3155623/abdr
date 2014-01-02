@@ -44,12 +44,14 @@ public class TestKVDB {
 			temp += 2;
 	    }
 	    
+	    //init neighbour
 	    for (int i = 0; i < 3; i++) {
 	    	int fakeId = (i * nbProfilePerKVDB) + (kvdbs.size() * nbProfilePerKVDB);
 			kvdbs.get(i * nbProfilePerKVDB).setLeftKVDB(kvdbs.get((fakeId - nbProfilePerKVDB) % (kvdbs.size() * nbProfilePerKVDB)));
 			kvdbs.get(i * nbProfilePerKVDB).setRightKVDB(kvdbs.get((fakeId + nbProfilePerKVDB) % (kvdbs.size() * nbProfilePerKVDB)));
 	    }
 	    
+	    //init monitors
 	    for (int i = 0; i < nbProfilePerKVDB; i++) {
 	    	monitors.put(i, new Monitor(tempList, 0));
 	    }
@@ -286,7 +288,7 @@ public class TestKVDB {
 	
 	@Test
 	public void testMigration() {
-		List<Integer> transfusedProfiles = new ArrayList<Integer>();
+		/*List<Integer> transfusedProfiles = new ArrayList<Integer>();
 		transfusedProfiles.add(1);
 		transfusedProfiles.add(3);
 		
@@ -300,6 +302,6 @@ public class TestKVDB {
 		System.out.println(" ------------------------DB0 apres");
 		kvdbs.get(0).printDB();
 		System.out.println(" ------------------------DB1 apres");
-		kvdbs.get(5).printDB();
+		kvdbs.get(5).printDB();*/
 	}
 }

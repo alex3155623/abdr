@@ -6,7 +6,7 @@ import transaction.Data;
 import transaction.Operation;
 import transaction.OperationResult;
 
-public interface KVDBInterface {
+public interface KVDBInterface extends KVDBLoadBalancer {
 	//accept user transactions
 	List<OperationResult> executeOperations(List<Operation> operations);
 	
@@ -16,11 +16,16 @@ public interface KVDBInterface {
 	//void attendre les jetons
 		//- le jeton contient les tables associés
 	
-	void transfuseData(int profile, KVDB target);
+	
+	void transfuseData(List<Integer> profiles, KVDBInterface target);
+	
 	void injectData(List<Operation> data);
+	
+	void startDB();
 	
 	void closeDB();
 	
 	void printDB();
+
 	
 }

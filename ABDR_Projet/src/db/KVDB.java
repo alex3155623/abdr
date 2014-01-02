@@ -54,9 +54,11 @@ public class KVDB implements KVDBInterface {
     private final int nbObjects = 5;
     private final int nbProfile = 5;
 
-    private Map<String, KVDB> kvdbs = new HashMap<String, KVDB>();
+    private Map<String, KVDBInterface> neighbourKvdbs = new HashMap<String, KVDBInterface>();
     private Map<Integer, Monitor> monitorMapping = new ConcurrentHashMap<Integer, Monitor>();
     private List<Integer> profiles = new ArrayList<Integer>();
+    
+    private Map<Integer, TokenInterface> tokens = new ConcurrentHashMap<Integer, TokenInterface>();
     
 	
 	public KVDB(int id, String storeName, String hostName, String hostPort, Map<Integer, Monitor> monitorMapping) {
@@ -74,16 +76,16 @@ public class KVDB implements KVDBInterface {
 		return id;
 	}
 	
-	public void setLeftKVDB(KVDB kvdbLeft) {
-		this.kvdbs.put("left", kvdbLeft);
+	public void setLeftKVDB(KVDBInterface kvdbLeft) {
+		this.neighbourKvdbs.put("left", kvdbLeft);
 	}
 	
-	public void setRightKVDB(KVDB kvdbRight) {
-		this.kvdbs.put("right", kvdbRight);
+	public void setRightKVDB(KVDBInterface kvdbRight) {
+		this.neighbourKvdbs.put("right", kvdbRight);
 	}
 
-	public Map<String, KVDB> getKvdbs() {
-		return kvdbs;
+	public Map<String, KVDBInterface> getNeighbourKvdbs() {
+		return neighbourKvdbs;
 	}
 
 	
@@ -92,7 +94,6 @@ public class KVDB implements KVDBInterface {
 
         //instanciation de la base de donnée
 		try {
-			//TODO lire le fichier de conf pour avoir les info de configuration
 		      store = KVStoreFactory.getStore(new KVStoreConfig(storeName, hostName + ":" + hostPort));
 		} catch (Exception e) {
 		    e.printStackTrace();
@@ -115,14 +116,8 @@ public class KVDB implements KVDBInterface {
         }
     }
 	
-	private void initLoadBalancer() {
-		Thread t = new Thread(new KVDBLoadBalancer(this));
-		t.start();
-	}
-	
 	private void initAll() {
 		initBase();
-		initLoadBalancer();
 	}
 	
 	
@@ -230,25 +225,27 @@ public class KVDB implements KVDBInterface {
 	 * @param target
 	 */
 	@Override
-	public void transfuseData(int profile, KVDB target) {
-		List<Data> unusedData = new ArrayList<Data>();
-		unusedData.addAll(getAllDataFromProfile(profile));
-		
-		//data 2 transaction
-		List<Operation> transfuseOperations = new ArrayList<Operation>();
-		for (Data data : unusedData) {
-			transfuseOperations.add(new WriteOperation(data));
+	public void transfuseData(List<Integer> profiles, KVDBInterface target) {
+		for (int profile : profiles) {
+			List<Data> unusedData = new ArrayList<Data>();
+			unusedData.addAll(getAllDataFromProfile(profile));
+			
+			//data 2 transaction
+			List<Operation> transfuseOperations = new ArrayList<Operation>();
+			for (Data data : unusedData) {
+				transfuseOperations.add(new WriteOperation(data));
+			}
+			
+			//add them to target (inject)
+			target.injectData(transfuseOperations);
+			
+			//remove them from here (delete)
+			List<Operation> deleteOperations = new ArrayList<Operation>();
+			for (Data data : unusedData) {
+				deleteOperations.add(new DeleteOperation(data));
+			}
+			executeOperations(deleteOperations);
 		}
-		
-		//add them to target (inject)
-		target.injectData(transfuseOperations);
-		
-		//remove them from here (delete)
-		List<Operation> deleteOperations = new ArrayList<Operation>();
-		for (Data data : unusedData) {
-			deleteOperations.add(new DeleteOperation(data));
-		}
-		executeOperations(deleteOperations);
 	}
 	
 	
@@ -358,15 +355,15 @@ public class KVDB implements KVDBInterface {
 	 * ask migration from kvdb having profiles v to me
 	 * @param profiles
 	 */
-	public void migrate(List<Integer> profiles) {
-		List<KVDB> targetServers = new ArrayList<KVDB>();
+	private void migrate(List<Integer> profiles) {
+		List<KVDBInterface> targetServers = new ArrayList<KVDBInterface>();
 		
-		//ask migration
+		//ask migration of the list of profile to me
 		for (Integer profile : profiles) {
 			targetServers.add(monitorMapping.get(profile).notifyMigration(this, profile));
 		}
 		
-		//begin migration from target to me
+		//begin migration of profiles to me
 		for (int i = 0; i < profiles.size(); i++) {
 			targetServers.get(i).transfuseData(profiles.get(i), this);
 		}
@@ -376,6 +373,88 @@ public class KVDB implements KVDBInterface {
 			monitorMapping.get(profile).notifyEndMigration(this, profile);
 		}
 	}
+	
+	
+	
+	@Override
+	public void startDB() {
+		Thread t = new Thread(new Runnable() {
+			private boolean hasThrownToken = false;
+			
+			private synchronized void throwToken() {
+					tokens.put(id, new SleepingToken(id, KVDB.this));
+					hasThrownToken = true;
+			}
+			
+			private boolean hasLowLoad() {
+				return true;
+			}
+			
+			private boolean hasHighLoad() {
+				return true;
+			}
+			
+			private List<Integer> getLowUsedProfiles() {
+				return null;
+			}
+			
+			@Override
+			public void run() {
+				while (true) {
+					//if we detect that we do nothing, throw a sleeping token
+					if ((! hasThrownToken) && hasLowLoad()) {
+						throwToken();
+					}
+					
+					//check if we have token to send
+					synchronized (this) {
+						if (tokens.size() != 0) {
+							//if we have thrown our token, check if it's there
+							if (hasThrownToken) {
+								if (tokens.containsKey(id)) {
+									
+								}
+							}
+							
+							//check if we are busy, in this case, we consume the first token
+							if (hasHighLoad()) {
+								TokenInterface token = tokens.get(0);
+								tokens.remove(token);
+								token.getProfiles().addAll(getLowUsedProfiles());
+								token.getKvdb().sendToken(token);
+							}
+							
+							//we send to our neighbours the rest of tokens
+							((KVDBLoadBalancer)neighbourKvdbs.get("right")).sendToken(tokens);
+							tokens.clear();
+						}
+					}
+					
+					try {
+						Thread.sleep(10);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+				
+			}
+		});
+		t.start();
+	}
+	
+	
+	@Override
+	public void sendToken(Map<Integer, TokenInterface> tokens) {
+		this.tokens.putAll(tokens);
+	}
+	
+	@Override
+	public void sendToken(TokenInterface token) {
+		this.tokens.put(token.getId(), token);
+	}
+	
+	
 	
 	@Override
 	public void printDB() {
@@ -394,9 +473,9 @@ public class KVDB implements KVDBInterface {
 	
 	@Override
 	public void closeDB() {
-		for (Integer profile : this.profiles) {
+		/*for (Integer profile : this.profiles) {
 			store.multiDelete(Key.createKey("" + profile), null, null);
-		}
+		}*/
 		store.close();
 	}
 	
