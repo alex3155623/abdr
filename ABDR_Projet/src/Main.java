@@ -21,18 +21,18 @@ public class Main {
 	    //create DBs
 	    int temp = hostPort;
 	    for (int i = 0; i < 2; i++) {
-			kvdbs.add(new KVDB(i, storeName, hostName, new Integer(temp).toString()));
+			kvdbs.add(new KVDB(i, storeName, hostName, new Integer(temp).toString(), null));
 			temp += 2;
 	    }
 	    
 	    //make db knowing each other
-	    for (int i = 0; i < 2; i++) {
+	    /*for (int i = 0; i < 2; i++) {
 	    	for (KVDB db : kvdbs) {
 	    		if (kvdbs.get(i) == db)
 	    			continue;
 	    		kvdbs.get(i).addNeighbor(db);
 	    	}
-	    }
+	    }*/
 	    
 
 		kvdbs.get(0).closeDB();

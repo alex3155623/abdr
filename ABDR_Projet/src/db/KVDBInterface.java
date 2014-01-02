@@ -16,7 +16,7 @@ public interface KVDBInterface {
 	//void attendre les jetons
 		//- le jeton contient les tables associés
 	
-	void transfuseData(List<Integer>profiles, KVDB target);
+	void transfuseData(int profile, KVDB target);
 	void injectData(List<Operation> data);
 	
 	void closeDB();

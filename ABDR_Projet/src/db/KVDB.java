@@ -54,34 +54,17 @@ public class KVDB implements KVDBInterface {
     private final int nbObjects = 5;
     private final int nbProfile = 5;
 
-    private Map<Integer, KVDB> kvdbs = new HashMap<Integer, KVDB>();
+    private Map<String, KVDB> kvdbs = new HashMap<String, KVDB>();
     private Map<Integer, Monitor> monitorMapping = new ConcurrentHashMap<Integer, Monitor>();
     private List<Integer> profiles = new ArrayList<Integer>();
     
-    
-	public KVDB() {
-		initAll();
-	}
 	
-	public KVDB(int id) {
-		this.id = id;
-		initAll();
-	}
-
-	public KVDB(int id, String storeName, String hostName, String hostPort) {
+	public KVDB(int id, String storeName, String hostName, String hostPort, Map<Integer, Monitor> monitorMapping) {
 		this.id = id;
 		this.storeName = storeName;
 		this.hostName = hostName;
 		this.hostPort = hostPort;
-		initAll();
-	}
-	
-	public KVDB(int id, String storeName, String hostName, String hostPort, Map<Integer, KVDB> kvdbs) {
-		this.id = id;
-		this.storeName = storeName;
-		this.hostName = hostName;
-		this.hostPort = hostPort;
-		this.kvdbs = kvdbs;
+		this.monitorMapping = monitorMapping;
 		initAll();
 	}
 	
@@ -90,8 +73,16 @@ public class KVDB implements KVDBInterface {
 	public int getId() {
 		return id;
 	}
+	
+	public void setLeftKVDB(KVDB kvdbLeft) {
+		this.kvdbs.put("left", kvdbLeft);
+	}
+	
+	public void setRightKVDB(KVDB kvdbRight) {
+		this.kvdbs.put("right", kvdbRight);
+	}
 
-	public Map<Integer, KVDB> getKvdbs() {
+	public Map<String, KVDB> getKvdbs() {
 		return kvdbs;
 	}
 
@@ -239,29 +230,25 @@ public class KVDB implements KVDBInterface {
 	 * @param target
 	 */
 	@Override
-	public void transfuseData(List<Integer>profiles, KVDB target) {
-		//get all data
+	public void transfuseData(int profile, KVDB target) {
+		List<Data> unusedData = new ArrayList<Data>();
+		unusedData.addAll(getAllDataFromProfile(profile));
 		
-		for (Integer profile : profiles) {
-			List<Data> unusedData = new ArrayList<Data>();
-			unusedData.addAll(getAllDataFromProfile(profile));
-			
-			//data 2 transaction
-			List<Operation> transfuseOperations = new ArrayList<Operation>();
-			for (Data data : unusedData) {
-				transfuseOperations.add(new WriteOperation(data));
-			}
-			
-			//add them to target (inject)
-			target.injectData(transfuseOperations);
-			
-			//remove them from here (delete)
-			List<Operation> deleteOperations = new ArrayList<Operation>();
-			for (Data data : unusedData) {
-				deleteOperations.add(new DeleteOperation(data));
-			}
-			executeOperations(deleteOperations);
+		//data 2 transaction
+		List<Operation> transfuseOperations = new ArrayList<Operation>();
+		for (Data data : unusedData) {
+			transfuseOperations.add(new WriteOperation(data));
 		}
+		
+		//add them to target (inject)
+		target.injectData(transfuseOperations);
+		
+		//remove them from here (delete)
+		List<Operation> deleteOperations = new ArrayList<Operation>();
+		for (Data data : unusedData) {
+			deleteOperations.add(new DeleteOperation(data));
+		}
+		executeOperations(deleteOperations);
 	}
 	
 	
@@ -367,13 +354,27 @@ public class KVDB implements KVDBInterface {
 		executeOperations(data);
 	}
 	
-	//TODO remove
-	public void addNeighbor(KVDB newDB) {
-		kvdbs.put(newDB.getId(), newDB);
-	}
-	
+	/**
+	 * ask migration from kvdb having profiles v to me
+	 * @param profiles
+	 */
 	public void migrate(List<Integer> profiles) {
-		//
+		List<KVDB> targetServers = new ArrayList<KVDB>();
+		
+		//ask migration
+		for (Integer profile : profiles) {
+			targetServers.add(monitorMapping.get(profile).notifyMigration(this, profile));
+		}
+		
+		//begin migration from target to me
+		for (int i = 0; i < profiles.size(); i++) {
+			targetServers.get(i).transfuseData(profiles.get(i), this);
+		}
+		
+		//end migration
+		for (Integer profile : profiles) {
+			monitorMapping.get(profile).notifyEndMigration(this, profile);
+		}
 	}
 	
 	@Override

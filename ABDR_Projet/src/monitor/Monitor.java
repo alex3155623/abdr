@@ -3,7 +3,7 @@ package monitor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
+
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -139,26 +139,19 @@ public class Monitor implements MonitorInterface{
 		return serverMapping.get(operations.get(0).getData().getCategory());
 	}
 
-	/**
-	 * the caller must sort profiles !!!!!!!!!!!
-	 */
 	@Override
-	public List<KVDB> notifyMigration(KVDB newSource, List<Integer> profiles) {
-		List<KVDB> result = new ArrayList<KVDB>();
-		for (Integer profile : profiles) {
-			profileMutexes.get(profile).writeLock().lock();
-			result.add(serverMapping.get(profile));
-		}
+	public KVDB notifyMigration(KVDB newSource, int profile) {
+		KVDB result;
+		profileMutexes.get(profile).writeLock().lock();
+		result = serverMapping.get(profile);
 		
 		return result;
 	}
 	
 	@Override
-	public void notifyEndMigration(KVDB newSource, List<Integer> profiles){
-		for (Integer profile : profiles) {
-			serverMapping.put(profile, newSource);
-			profileMutexes.get(profile).writeLock().unlock();
-		}
+	public void notifyEndMigration(KVDB newSource, int profile){
+		serverMapping.put(profile, newSource);
+		profileMutexes.get(profile).writeLock().unlock();
 	}
 
 	

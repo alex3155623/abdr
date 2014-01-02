@@ -11,9 +11,9 @@ public interface MonitorInterface {
 	List<OperationResult> executeOperations(List<Operation> operations);
 	
 	//kvdb notifier les migrations
-	List<KVDB> notifyMigration (KVDB newSource, List<Integer> profiles);
+	KVDB notifyMigration (KVDB newSource, int profile);
 	
 	// kvdb notifie fin de migration
-	void notifyEndMigration(KVDB newSource, List<Integer> profiles);
+	void notifyEndMigration(KVDB newSource, int profile);
 	
 }

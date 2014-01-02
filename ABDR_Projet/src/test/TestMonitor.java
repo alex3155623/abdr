@@ -33,7 +33,7 @@ public class TestMonitor {
 		//create DBs
 	    int temp = hostPort;
 	    for (int i = 0; i < 2; i++) {
-			kvdbs.add(new KVDB(i * 5, storeName, hostName, new Integer(temp).toString()));
+			kvdbs.add(new KVDB(i * 5, storeName, hostName, new Integer(temp).toString(), null));
 			temp+=2;
 	    }
 	    

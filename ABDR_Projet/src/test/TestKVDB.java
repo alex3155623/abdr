@@ -3,7 +3,12 @@ package test;
 import static org.junit.Assert.*;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import monitor.Monitor;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -21,22 +26,40 @@ public class TestKVDB {
 	static String storeName = "kvstore";
 	static String hostName = "ari-31-201-01";
 	static int hostPort = 31500;
-	static List<KVDB> kvdbs = new ArrayList<KVDB>();
+	static Map<Integer, KVDB> kvdbs = new HashMap<Integer, KVDB>();
+	static Map<Integer, Monitor> monitors = new HashMap<Integer, Monitor>();
+	static int nbProfilePerKVDB = 5;
 	
 	@BeforeClass
 	public static void onlyOnce() {
 		//create DBs
 	    int temp = hostPort;
-	    for (int i = 0; i < 2; i++) {
-			kvdbs.add(new KVDB(i * 5, storeName, hostName, new Integer(temp).toString()));
+	    
+	    
+	    List<KVDB> tempList = new ArrayList<KVDB>();
+	    for (int i = 0; i < 3; i++) {
+	    	KVDB db = new KVDB(i * nbProfilePerKVDB, storeName, hostName, new Integer(temp).toString(), monitors);
+			kvdbs.put(i * nbProfilePerKVDB, db);
+			tempList.add(db);
 			temp += 2;
+	    }
+	    
+	    for (int i = 0; i < 3; i++) {
+	    	int fakeId = (i * nbProfilePerKVDB) + (kvdbs.size() * nbProfilePerKVDB);
+			kvdbs.get(i * nbProfilePerKVDB).setLeftKVDB(kvdbs.get((fakeId - nbProfilePerKVDB) % (kvdbs.size() * nbProfilePerKVDB)));
+			kvdbs.get(i * nbProfilePerKVDB).setRightKVDB(kvdbs.get((fakeId + nbProfilePerKVDB) % (kvdbs.size() * nbProfilePerKVDB)));
+	    }
+	    
+	    for (int i = 0; i < nbProfilePerKVDB; i++) {
+	    	monitors.put(i, new Monitor(tempList, 0));
 	    }
 	}
 	
 	@AfterClass
 	public static void after() {
-		for (KVDB db : kvdbs) {
-			db.closeDB();
+		Set<Integer> keys = kvdbs.keySet();
+		for (Integer dbIndex : keys) {
+			kvdbs.get(dbIndex).closeDB();
 	    }
 	}
 	
@@ -243,6 +266,26 @@ public class TestKVDB {
 	
 	@Test
 	public void testTransfusion() {
+		/*List<Integer> transfusedProfiles = new ArrayList<Integer>();
+		transfusedProfiles.add(1);
+		transfusedProfiles.add(3);
+		
+		System.out.println(" ------------------------DB0 avant");
+		kvdbs.get(0).printDB();
+		System.out.println(" ------------------------DB1 avant");
+		kvdbs.get(5).printDB();
+		
+		kvdbs.get(0).transfuseData(transfusedProfiles, kvdbs.get(5));
+		
+		System.out.println(" ------------------------DB0 apres");
+		kvdbs.get(0).printDB();
+		System.out.println(" ------------------------DB1 apres");
+		kvdbs.get(5).printDB();*/
+	}
+	
+	
+	@Test
+	public void testMigration() {
 		List<Integer> transfusedProfiles = new ArrayList<Integer>();
 		transfusedProfiles.add(1);
 		transfusedProfiles.add(3);
@@ -250,13 +293,13 @@ public class TestKVDB {
 		System.out.println(" ------------------------DB0 avant");
 		kvdbs.get(0).printDB();
 		System.out.println(" ------------------------DB1 avant");
-		kvdbs.get(1).printDB();
+		kvdbs.get(5).printDB();
 		
-		kvdbs.get(0).transfuseData(transfusedProfiles, kvdbs.get(1));
+		kvdbs.get(5).migrate(transfusedProfiles);
 		
 		System.out.println(" ------------------------DB0 apres");
 		kvdbs.get(0).printDB();
 		System.out.println(" ------------------------DB1 apres");
-		kvdbs.get(1).printDB();
+		kvdbs.get(5).printDB();
 	}
 }
