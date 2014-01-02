@@ -59,12 +59,12 @@ public class KVDB implements DBInterface {
     
     
 	public KVDB() {
-		initBase();
+		initAll();
 	}
 	
 	public KVDB(int id) {
 		this.id = id;
-		initBase();
+		initAll();
 	}
 	
 	
@@ -73,7 +73,7 @@ public class KVDB implements DBInterface {
 		this.storeName = storeName;
 		this.hostName = hostName;
 		this.hostPort = hostPort;
-		initBase();
+		initAll();
 	}
 	
 	@Override
@@ -108,6 +108,16 @@ public class KVDB implements DBInterface {
             }
         }
     }
+	
+	private void initLoadBalancer() {
+		Thread t = new Thread(new KVDBLoadBalancer());
+		t.start();
+	}
+	
+	private void initAll() {
+		initBase();
+		initLoadBalancer();
+	}
 	
 	
 	@Override

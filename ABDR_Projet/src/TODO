@@ -1,5 +1,12 @@
 TODO : 
 
+- la migration doit ne pas utiliser les transactions pour éviter les problèmes d'exception si transaction trop grosse
+
+- répartition du moniteur : 
+	- chaque moniteur se charge d'un morceau du catalogue : 
+		- chaque fois qu'il y a migration d'un de leurs bébé, il est averti
+
+
 - détecter la surcharge/qu'on ne fait rien
 
 
@@ -20,25 +27,34 @@ TODO :
 
 - 2 types de migration : 
 	- migration forcée (transaction multiclé)
-		- un kvdb demande au kvdbhash, la migration de target vers lui
+		- un kvdb demande au moniteur, la migration de target vers lui
 	- migration de répartition de charge
 		- un kvdb ajoute au jeton ce dont il n'a pas besoin (noms de catégories)
-		- le propriétaire du jeton demande la migration vers lui des catégories dans jeton aux kvdbhash
+		- le propriétaire du jeton demande la migration vers lui des catégories dans jeton aux moniteurs concernés
 
 	- avec cette façon de procéder, les 2 types de migrations utilisent le même système pour migrer
 
 
 
 - initiation de migration : 
-	- le kvdb qui veut faire une migration prévient le kvdb hash de la volonté de migration
-	- le kvdb hash lui répond en lui donnant le kvdb ayant la ressource + maj de qui a quoi dans le kvdb hash
-	- le kvdb fait migration
+	- le kvdb qui veut faire une migration prévient le moniteur ayant la ressource de la volonté de migration
+	- le moniteur attend la fin des transactions impliquant la ressource + bloque les nouveaux
+			- cela peut se faire via un verroux de type lecteur/écrivain, les threads clients sont des lecteurs, et le moniteur un ecrivain
+			- cela implique un verroux lecteur écrivain par catégorie
+		+ maj de qui a quoi dans le moniteur
+		+ le moniteur répond au kvdb voulant la ressource en lui donnant le kvdb ayant la ressource
+	- le kvdb fait migration + notifie le moniteur
+	- le moniteur réouvre les vannes de requetes
 	
 	- pendant les migrations, il faut mutex pour interdire de faire certains types de transaction : 
 		- pour celui qui donne, il s'en fout, il se met à déleguer vers le new dès le début (il demande au hash à qui déléguer)
 		- pour celui qui reçoit, il doit avoir une protection pour ne pas executer de transactions sur les données migrées
-			- les transactions en attentesdfsdfdf
+			- les transactions en attentes
 
 
+- tout ça nécéssite les informations suivantes : 
+	- quel type de clé va avec quel autre (pour les transactions)
+	- on extrait ainsi plusieurs grappes de catégories qui sont régulièrement ensemble
+	- lors de la migration de répartition de charge, on donne un ensemble de grappe peu utilisé
 	
-		
+
