@@ -20,7 +20,7 @@ import db.KVDB;
 public class TestKVDB {
 	static String storeName = "kvstore";
 	static String hostName = "ari-31-201-01";
-	static int hostPort = 5002;
+	static int hostPort = 31500;
 	static List<KVDB> kvdbs = new ArrayList<KVDB>();
 	
 	@BeforeClass
@@ -28,7 +28,7 @@ public class TestKVDB {
 		//create DBs
 	    int temp = hostPort;
 	    for (int i = 0; i < 2; i++) {
-			kvdbs.add(new KVDB(i, storeName, hostName, new Integer(temp).toString()));
+			kvdbs.add(new KVDB(i * 5, storeName, hostName, new Integer(temp).toString()));
 			temp += 2;
 	    }
 	}
@@ -243,9 +243,9 @@ public class TestKVDB {
 	
 	@Test
 	public void testTransfusion() {
-		List<String> transfusedProfiles = new ArrayList<String>();
-		transfusedProfiles.add("1");
-		transfusedProfiles.add("3");
+		List<Integer> transfusedProfiles = new ArrayList<Integer>();
+		transfusedProfiles.add(1);
+		transfusedProfiles.add(3);
 		
 		System.out.println(" ------------------------DB0 avant");
 		kvdbs.get(0).printDB();

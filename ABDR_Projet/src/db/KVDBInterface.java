@@ -6,7 +6,7 @@ import transaction.Data;
 import transaction.Operation;
 import transaction.OperationResult;
 
-public interface DBInterface {
+public interface KVDBInterface {
 	//accept user transactions
 	List<OperationResult> executeOperations(List<Operation> operations);
 	
@@ -16,11 +16,8 @@ public interface DBInterface {
 	//void attendre les jetons
 		//- le jeton contient les tables associés
 	
-	void transfuseData(List<String>profiles, KVDB target);
+	void transfuseData(List<Integer>profiles, KVDB target);
 	void injectData(List<Operation> data);
-	
-	// le monitor en a besoin
-	List<String> getProfiles();
 	
 	void closeDB();
 	

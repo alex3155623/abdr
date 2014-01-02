@@ -1,13 +1,14 @@
 package db;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.SortedMap;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.ConcurrentHashMap;
 
+import monitor.Monitor;
 import oracle.kv.DurabilityException;
 import oracle.kv.FaultException;
 import oracle.kv.KVStore;
@@ -41,24 +42,21 @@ import transaction.WriteOperation;
  *
  */
 
-public class KVDB implements DBInterface {
+public class KVDB implements KVDBInterface {
 	private KVStore store;
 	private int id;
     private String storeName = "kvstore";
     private String hostName = "localhost";
     private String hostPort = "5000";
     
-    private final String profile = "P";
-    private final String object = "O";
-    private final String attribute = "A";
-    
     private final int nbInt = 5;
     private final int nbString = 5;
     private final int nbObjects = 5;
     private final int nbProfile = 5;
 
-    private List<KVDB> otherDBs = new ArrayList<KVDB>();
-    private List<String> profiles = new ArrayList<String>();
+    private Map<Integer, KVDB> kvdbs = new HashMap<Integer, KVDB>();
+    private Map<Integer, Monitor> monitorMapping = new ConcurrentHashMap<Integer, Monitor>();
+    private List<Integer> profiles = new ArrayList<Integer>();
     
     
 	public KVDB() {
@@ -78,10 +76,25 @@ public class KVDB implements DBInterface {
 		initAll();
 	}
 	
-	@Override
-	public List<String> getProfiles() { 
-		return profiles;
+	public KVDB(int id, String storeName, String hostName, String hostPort, Map<Integer, KVDB> kvdbs) {
+		this.id = id;
+		this.storeName = storeName;
+		this.hostName = hostName;
+		this.hostPort = hostPort;
+		this.kvdbs = kvdbs;
+		initAll();
 	}
+	
+	
+	
+	public int getId() {
+		return id;
+	}
+
+	public Map<Integer, KVDB> getKvdbs() {
+		return kvdbs;
+	}
+
 	
 	private void initBase() {
         Key key;
@@ -96,15 +109,15 @@ public class KVDB implements DBInterface {
         
         //foreach profile
        for (int i = id; i < (id + nbProfile); i++) {
-        	profiles.add(profile + i);
+        	profiles.add(i);
         	//foreach object
             for (int j = 0; j < nbObjects; j++) {
             	//foreach attribute
             	for (int k = 0; k < nbString + nbInt; k++) {
             		List<String> att = new ArrayList<String>();
-            		att.add(object + new Integer(j).toString());
-            		att.add(attribute + new Integer(k).toString());
-            		key = Key.createKey(profile + i,  att);
+            		att.add(new Integer(j).toString());
+            		att.add(new Integer(k).toString());
+            		key = Key.createKey("" + i,  att);
             		store.put(key, Value.createValue(new Integer(0).toString().getBytes()));
             	}
             }
@@ -112,7 +125,7 @@ public class KVDB implements DBInterface {
     }
 	
 	private void initLoadBalancer() {
-		Thread t = new Thread(new KVDBLoadBalancer());
+		Thread t = new Thread(new KVDBLoadBalancer(this));
 		t.start();
 	}
 	
@@ -172,7 +185,7 @@ public class KVDB implements DBInterface {
 		int category = data.getCategory();
 		List <OperationResult> operationResult = new ArrayList<OperationResult>();
 		
-		SortedMap<Key,ValueVersion> profileObjects = store.multiGet(Key.createKey(profile + category), new KeyRange (object + new Integer(dataId).toString()), null);
+		SortedMap<Key,ValueVersion> profileObjects = store.multiGet(Key.createKey("" + category), new KeyRange (new Integer(dataId).toString()), null);
 
 		if (profileObjects.size() != (nbString + nbInt)) {
 			operationResult.add(new OperationResult(false, null));
@@ -225,10 +238,11 @@ public class KVDB implements DBInterface {
 	 * @param profiles
 	 * @param target
 	 */
-	public void transfuseData(List<String>profiles, KVDB target) {
+	@Override
+	public void transfuseData(List<Integer>profiles, KVDB target) {
 		//get all data
 		
-		for (String profile : profiles) {
+		for (Integer profile : profiles) {
 			List<Data> unusedData = new ArrayList<Data>();
 			unusedData.addAll(getAllDataFromProfile(profile));
 			
@@ -251,10 +265,10 @@ public class KVDB implements DBInterface {
 	}
 	
 	
-	private List<Data> getAllDataFromProfile(String profile) {
+	private List<Data> getAllDataFromProfile(int profile) {
 		List<Data> datas = new ArrayList<Data>();
 
-		SortedMap<Key,ValueVersion> profileObjects = store.multiGet(Key.createKey(this.profile + profile), null, null);
+		SortedMap<Key,ValueVersion> profileObjects = store.multiGet(Key.createKey("" + profile), null, null);
 		int i = 0;
 		Data data = new Data();
 		for (Entry<Key, ValueVersion> profileObject : profileObjects.entrySet()) {
@@ -267,8 +281,8 @@ public class KVDB implements DBInterface {
     		
     		if (i == 10) {
 				i = 0;
-				data.setId(Integer.valueOf(profileObject.getKey().getMinorPath().get(0).substring(1)));
-				data.setCategory(Integer.valueOf(profileObject.getKey().getMajorPath().get(0).substring(1)));
+				data.setId(Integer.valueOf(profileObject.getKey().getMinorPath().get(0)));
+				data.setCategory(Integer.valueOf(profileObject.getKey().getMajorPath().get(0)));
 				datas.add(data);
 				data = new Data();
     		}
@@ -289,14 +303,14 @@ public class KVDB implements DBInterface {
 		OperationFactory operationFactory = store.getOperationFactory();
 		List<oracle.kv.Operation> operationList = new ArrayList<oracle.kv.Operation>();
 		
-		if (! profiles.contains(profile + category))
-			profiles.add (profile + category);
+		if (! profiles.contains(category))
+			profiles.add(category);
 		
 		for (int i = 0; i < nbInt + nbString; i++) {
 			List<String> att = new ArrayList<String>();
-    		att.add(object + new Integer(dataId).toString());
-    		att.add(attribute + new Integer(i).toString());
-    		key = Key.createKey(profile + category, att);
+    		att.add(new Integer(dataId).toString());
+    		att.add(new Integer(i).toString());
+    		key = Key.createKey("" + category, att);
     		
     		if (i < nbInt)
     			operationList.add(operationFactory.createPut(key, Value.createValue(data.getListNumber().get(i).toString().getBytes())));
@@ -325,14 +339,14 @@ public class KVDB implements DBInterface {
 		OperationFactory operationFactory = store.getOperationFactory();
 		List<oracle.kv.Operation> operationList = new ArrayList<oracle.kv.Operation>();
 		
-		if (! profiles.contains(profile + category))
-			profiles.add (profile + category);
+		if (! profiles.contains(category))
+			profiles.add (category);
 		
 		for (int i = 0; i < nbInt + nbString; i++) {
 			List<String> att = new ArrayList<String>();
-    		att.add(object + new Integer(dataId).toString());
-    		att.add(attribute + new Integer(i).toString());
-    		key = Key.createKey(profile + category, att);
+    		att.add(new Integer(dataId).toString());
+    		att.add(new Integer(i).toString());
+    		key = Key.createKey("" + category, att);
     		operationList.add(operationFactory.createDelete(key));
 		}
 		
@@ -355,14 +369,18 @@ public class KVDB implements DBInterface {
 	
 	//TODO remove
 	public void addNeighbor(KVDB newDB) {
-		otherDBs.add(newDB);
+		kvdbs.put(newDB.getId(), newDB);
+	}
+	
+	public void migrate(List<Integer> profiles) {
+		//
 	}
 	
 	@Override
 	public void printDB() {
         //foreach profile
-		for (String profile : profiles) {
-			SortedMap<Key,ValueVersion> profileObjects = store.multiGet(Key.createKey(profile), null, null);
+		for (Integer profile : profiles) {
+			SortedMap<Key,ValueVersion> profileObjects = store.multiGet(Key.createKey(profile + ""), null, null);
 			
 			for (Entry<Key, ValueVersion> profileObject : profileObjects.entrySet()) {
 				ValueVersion valueVersion = profileObject.getValue();
@@ -375,12 +393,11 @@ public class KVDB implements DBInterface {
 	
 	@Override
 	public void closeDB() {
-		for (String profile : this.profiles) {
-			store.multiDelete(Key.createKey(this.profile + profile), null, null);
+		for (Integer profile : this.profiles) {
+			store.multiDelete(Key.createKey("" + profile), null, null);
 		}
 		store.close();
 	}
-	
 	
 
 	@Override

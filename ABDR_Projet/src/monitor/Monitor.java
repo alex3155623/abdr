@@ -118,7 +118,6 @@ public class Monitor implements MonitorInterface{
 	
 	private List<Integer> findProfile(List<Operation> operations) {
 		int currentProfile;
-		int profile = 0;
 		ArrayList<Integer> list = new ArrayList<Integer>();
 		for(Operation op : operations){
 			currentProfile = op.getData().getCategory();

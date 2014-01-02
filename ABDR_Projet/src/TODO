@@ -47,14 +47,6 @@ TODO :
 			donnant le kvdb ayant la ressource
 	- le kvdb fait migration + notifie le moniteur
 	- le moniteur réouvre les vannes de requetes
-	
-	- pendant les migrations, il faut mutex pour interdire de faire certains 
-		types de transaction : 
-		- pour celui qui donne, il s'en fout, il se met à déleguer 
-			vers le new dès le début (il demande au hash à qui déléguer)
-		- pour celui qui reçoit, il doit avoir une protection pour 
-			ne pas executer de transactions sur les données migrées
-			- les transactions en attentes
 
 
 - tout ça nécéssite les informations suivantes : 
