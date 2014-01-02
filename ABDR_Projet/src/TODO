@@ -34,21 +34,26 @@ TODO :
 
 	- avec cette façon de procéder, les 2 types de migrations utilisent le même système pour migrer
 
-
-
 - initiation de migration : 
-	- le kvdb qui veut faire une migration prévient le moniteur ayant la ressource de la volonté de migration
-	- le moniteur attend la fin des transactions impliquant la ressource + bloque les nouveaux
-			- cela peut se faire via un verroux de type lecteur/écrivain, les threads clients sont des lecteurs, et le moniteur un ecrivain
+	- le kvdb qui veut faire une migration prévient le moniteur ayant la ressource 
+		de la volonté de migration
+	- le moniteur attend la fin des transactions impliquant 
+		la ressource + bloque les nouveaux
+			- cela peut se faire via un verroux de type lecteur/écrivain, 
+				les threads clients sont des lecteurs, et le moniteur un ecrivain
 			- cela implique un verroux lecteur écrivain par catégorie
 		+ maj de qui a quoi dans le moniteur
-		+ le moniteur répond au kvdb voulant la ressource en lui donnant le kvdb ayant la ressource
+		+ le moniteur répond au kvdb voulant la ressource en lui 
+			donnant le kvdb ayant la ressource
 	- le kvdb fait migration + notifie le moniteur
 	- le moniteur réouvre les vannes de requetes
 	
-	- pendant les migrations, il faut mutex pour interdire de faire certains types de transaction : 
-		- pour celui qui donne, il s'en fout, il se met à déleguer vers le new dès le début (il demande au hash à qui déléguer)
-		- pour celui qui reçoit, il doit avoir une protection pour ne pas executer de transactions sur les données migrées
+	- pendant les migrations, il faut mutex pour interdire de faire certains 
+		types de transaction : 
+		- pour celui qui donne, il s'en fout, il se met à déleguer 
+			vers le new dès le début (il demande au hash à qui déléguer)
+		- pour celui qui reçoit, il doit avoir une protection pour 
+			ne pas executer de transactions sur les données migrées
 			- les transactions en attentes
 
 

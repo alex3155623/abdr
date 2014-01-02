@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.SortedMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import oracle.kv.DurabilityException;
 import oracle.kv.FaultException;
@@ -93,7 +96,7 @@ public class KVDB implements DBInterface {
 		}
         
         //foreach profile
-       for (int i = id * nbProfile; i < (id * nbProfile) + nbProfile; i++) {
+       for (int i = id; i < (id + nbProfile); i++) {
         	profiles.add(profile + i);
         	//foreach object
             for (int j = 0; j < nbObjects; j++) {
@@ -122,13 +125,6 @@ public class KVDB implements DBInterface {
 	
 	@Override
 	public List<OperationResult> executeOperations(List<Operation> operations) {
-		//synchronized, verroux lecteur ecrivain
-		//1 verroux lecteur ecrivain par catégorie 
-			//-> pourri les perf, rend sequentiel des acces potentiellement concurrent
-		//1 verroux par objet
-			//bof
-		
-		
 		List<OperationResult> result = new ArrayList<OperationResult>();
 		
 		//si c'est un simple get, on fait un multiget sur la clé
@@ -215,10 +211,10 @@ public class KVDB implements DBInterface {
 
 		for (Operation operation : operations) {
 			if (operation instanceof WriteOperation) {
-				operationList.addAll(addData(operation.getData()));
+				operationList.addAll(getAddDataTransaction(operation.getData()));
 			}
 			else {
-				operationList.addAll(removeData(operation.getData()));
+				operationList.addAll(getRemoveDataTransaction(operation.getData()));
 			}
 		}
 		
@@ -287,7 +283,7 @@ public class KVDB implements DBInterface {
 	 * @param data
 	 * @return
 	 */
-	private List<oracle.kv.Operation> addData (Data data) {
+	private List<oracle.kv.Operation> getAddDataTransaction (Data data) {
 		int dataId = data.getId();
 		int category = data.getCategory();
 		Key key;
@@ -312,12 +308,18 @@ public class KVDB implements DBInterface {
 		return operationList;
 	}
 	
+	@Override
+	public String toString() {
+		return "KVDB [id=" + id + ", storeName=" + storeName + ", profiles="
+				+ profiles + "]";
+	}
+
 	/**
 	 * Create a list of operations to delete a data object
 	 * @param data
 	 * @return
 	 */
-	private List<oracle.kv.Operation> removeData (Data data) {
+	private List<oracle.kv.Operation> getRemoveDataTransaction (Data data) {
 		int dataId = data.getId();
 		int category = data.getCategory();
 		Key key;
