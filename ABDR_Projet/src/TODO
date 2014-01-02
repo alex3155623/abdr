@@ -1,25 +1,13 @@
 TODO : 
 
-- la migration doit ne pas utiliser les transactions pour éviter les problèmes d'exception si transaction trop grosse
+- fusion de catégories le temps d'une transaction multiclé
 
-- répartition du moniteur : 
-	- chaque moniteur se charge d'un morceau du catalogue : 
-		- chaque fois qu'il y a migration d'un de leurs bébé, il est averti
+- la migration doit ne pas utiliser les transactions pour éviter les problèmes d'exception si transaction trop grosse
 
 
 - détecter la surcharge/qu'on ne fait rien
 
-
-- faire le système de répartition de charge
-	- il faut un thread qui tourne en fond
-	- ce thread doit gérer la migration et donc concurrence avec le main thread
-
-
-- faire l'algorithme de migration
-	- il faut que la solution fonctionne : 
-		- en redirigeant les requetes qui ne sont pas sur le bon moniteur
-			- cela arrive pendant la migration
-		
+- benchmark
 
 
 
