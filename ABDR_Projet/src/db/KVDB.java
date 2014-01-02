@@ -69,8 +69,7 @@ public class KVDB implements DBInterface {
 		this.id = id;
 		initAll();
 	}
-	
-	
+
 	public KVDB(int id, String storeName, String hostName, String hostPort) {
 		this.id = id;
 		this.storeName = storeName;
@@ -380,5 +379,29 @@ public class KVDB implements DBInterface {
 			store.multiDelete(Key.createKey(this.profile + profile), null, null);
 		}
 		store.close();
+	}
+	
+	
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + id;
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		KVDB other = (KVDB) obj;
+		if (id != other.id)
+			return false;
+		return true;
 	}
 }

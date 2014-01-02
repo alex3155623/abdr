@@ -2,6 +2,7 @@ package monitor;
 
 import java.util.List;
 
+import db.KVDB;
 import transaction.OperationResult;
 import transaction.Operation;
 
@@ -10,8 +11,9 @@ public interface MonitorInterface {
 	List<OperationResult> executeOperations(List<Operation> operations);
 	
 	//kvdb notifier les migrations
-	void notifyMigration (List<String> profiles);
+	List<KVDB> notifyMigration (KVDB newSource, List<Integer> profiles);
+	
 	// kvdb notifie fin de migration
-	void notifyEndMigration();
+	void notifyEndMigration(KVDB newSource, List<Integer> profiles);
 	
 }

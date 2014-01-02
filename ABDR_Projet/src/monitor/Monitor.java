@@ -6,6 +6,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -24,13 +25,14 @@ import db.KVDB;
  */
 public class Monitor implements MonitorInterface{
 	private List<KVDB> servers = new ArrayList<KVDB>();
-
-	private Map<Integer, KVDB> serverMapping = new HashMap<Integer, KVDB>();
+	private Map<Integer, Monitor> monitorMapping = new ConcurrentHashMap<Integer, Monitor>();
+	private Map<Integer, KVDB> serverMapping = new ConcurrentHashMap<Integer, KVDB>();
 	
 	//mutex to access profiles. (reader = transactions thread, writer = monitor).
-	private Map<Integer, ReadWriteLock> profileMutexes = new HashMap<Integer, ReadWriteLock>();
+	private Map<Integer, ReadWriteLock> profileMutexes = new ConcurrentHashMap<Integer, ReadWriteLock>();
 	private int nbProfile = 10;
 	private int profileOffset;
+	private int nbMonitors = 1;
 	
 	
 	public Monitor(List<KVDB> kvdbs) {
@@ -52,6 +54,10 @@ public class Monitor implements MonitorInterface{
 	
 	private void initMapping() {
 		int tempOffset = profileOffset;
+		
+		for (int i = 0; i < nbMonitors; i++) {
+			//monitorMapping.put
+		}
 		
 		for (KVDB currentServer : servers) {
 			for (int i = 0; (i < 5) && (tempOffset < (profileOffset + nbProfile)); tempOffset++, i++) {
@@ -124,7 +130,8 @@ public class Monitor implements MonitorInterface{
 	}
 	
 	/**
-	 * Find the KVDB which will execute the transaction (it's the server having the most low category)
+	 * Find the KVDB which will execute the transaction (it's the server having the 
+	 * most low category)
 	 * @param operations
 	 * @return
 	 */
@@ -133,17 +140,26 @@ public class Monitor implements MonitorInterface{
 		return serverMapping.get(operations.get(0).getData().getCategory());
 	}
 
-	
+	/**
+	 * the caller must sort profiles !!!!!!!!!!!
+	 */
 	@Override
-	public synchronized void notifyMigration(List<String> profiles) {
-		// TODO Auto-generated method stub
-		//setMigration(true);
+	public List<KVDB> notifyMigration(KVDB newSource, List<Integer> profiles) {
+		List<KVDB> result = new ArrayList<KVDB>();
+		for (Integer profile : profiles) {
+			profileMutexes.get(profile).writeLock().lock();
+			result.add(serverMapping.get(profile));
+		}
+		
+		return result;
 	}
 	
-	
-	public synchronized void notifyEndMigration(){
-		//setMigration(false);
-		notifyAll();
+	@Override
+	public void notifyEndMigration(KVDB newSource, List<Integer> profiles){
+		for (Integer profile : profiles) {
+			serverMapping.put(profile, newSource);
+			profileMutexes.get(profile).writeLock().unlock();
+		}
 	}
 
 	
