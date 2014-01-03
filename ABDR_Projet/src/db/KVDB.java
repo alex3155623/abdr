@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import monitor.Monitor;
 import oracle.kv.DurabilityException;
@@ -57,6 +59,7 @@ public class KVDB implements KVDBInterface {
     private Map<String, KVDBInterface> neighbourKvdbs = new HashMap<String, KVDBInterface>();
     private Map<Integer, Monitor> monitorMapping = new ConcurrentHashMap<Integer, Monitor>();
     private Map<Integer, Integer> localProfiles = new ConcurrentHashMap<Integer, Integer>();
+    private Map<Integer, ReadWriteLock> profileMutexes = new ConcurrentHashMap<Integer, ReadWriteLock>();
 
     private TokenInterface myToken;
     private Map<Integer, TokenInterface> tokens = new ConcurrentHashMap<Integer, TokenInterface>();
@@ -108,6 +111,7 @@ public class KVDB implements KVDBInterface {
         //foreach profile
 		for (int i = id; i < (id + nbProfile); i++) {
 			localProfiles.put(i, i);
+			profileMutexes.put(i, new ReentrantReadWriteLock(true));
 
 			//foreach object
 			for (int j = 0; j < nbObjects; j++) {
@@ -125,16 +129,6 @@ public class KVDB implements KVDBInterface {
 	
 	private void initAll() {
 		initBase();
-	}
-	
-	private boolean isMultiProfileTransaction(List<Operation> operations) {
-		int profile = operations.get(0).getData().getCategory();
-		
-		for (Operation operation : operations) {
-			if (profile != operation.getData().getCategory())
-				return true;
-		}
-		return false;
 	}
 	
 	
@@ -161,68 +155,146 @@ public class KVDB implements KVDBInterface {
 		return new ArrayList<Integer>(transactionProfiles.values());
 	}
 	
-	private int implodeProfiles(List<Integer> profiles) {
-		return 0;
-	}
 	
-	private void explodeProfile(int fusedProfilesMasterKey) {
+	private List<Integer> implodeProfiles(List<Integer> profiles) {
+		List<String> prim = new ArrayList<String>();
+		for (int c : profiles) {
+    		prim.add(new Integer(profiles.get(c)).toString());
+		}
+
+		for (int profile : profiles) {
+			//get every values for this profile
+			SortedMap<Key,ValueVersion> profileObjects = store.multiGet(Key.createKey(profile + ""), null, null);
+			
+			//for every values, insert them to their new profile and delete it from it's old one
+			for (Entry<Key, ValueVersion> profileObject : profileObjects.entrySet()) {
+				Key oldKey = profileObject.getKey();
+				Value value = profileObject.getValue().getValue();
+				List<String> newMinorKey = oldKey.getFullPath();
+				Key key = Key.createKey(prim, newMinorKey);
+				store.put(key, value);
+				store.delete(oldKey);
+			}
+		}
 		
+		return profiles;
+	}
+	
+	private void explodeProfile(List<Integer> fusedProfilesMasterKey) {
+		SortedMap<Key,ValueVersion> profileObjects = store.multiGet(Key.createKey(fusedProfilesMasterKey + ""), null, null);
+		
+		//for every values, insert them to their old profile and delete it from it's temporary one
+		for (Entry<Key, ValueVersion> profileObject : profileObjects.entrySet()) {
+			Key oldKey = profileObject.getKey();
+			Value value = profileObject.getValue().getValue();
+			List<String> newMinorKey = oldKey.getMinorPath().subList(1, oldKey.getMinorPath().size());
+			List<String> newMajorKey = oldKey.getMinorPath().subList(0, 1);
+			Key key = Key.createKey(newMajorKey, newMinorKey);
+			store.put(key, value);
+			store.delete(oldKey);
+		}
 	}
 	
 	
+	/**
+	 * entry point of monitors transactions
+	 */
 	@Override
 	public List<OperationResult> executeOperations(List<Operation> operations) {
 		List<OperationResult> result = new ArrayList<OperationResult>();
+		List<oracle.kv.Operation> opList;
 		
-		//si c'est un simple get, on fait un multiget sur la clé
+		//get on a single data
 		if ((operations.size() == 1) && (operations.get(0) instanceof ReadOperation)) {
+			profileMutexes.get(operations.get(0).getData().getCategory()).readLock().lock();
 			result = getData(operations.get(0).getData());
+			profileMutexes.get(operations.get(0).getData().getCategory()).readLock().unlock();
+		}
+		//single key transaction (we should have this key so we don't check)
+		else if (getTransactionProfiles(operations).size() == 1) {
+			profileMutexes.get(operations.get(0).getData().getCategory()).readLock().lock();
+			result = internalExecute(convertOperations(operations));
+			profileMutexes.get(operations.get(0).getData().getCategory()).readLock().unlock();
 		}
 		else {
-			//sinon, c'est une transaction
-			List<oracle.kv.Operation> opList;
+			//multiple key transaction
+			List<Integer> unknownProfiles = getUnknownProfiles(operations);
+			List<Integer> transactionProfiles = getTransactionProfiles(operations);
 			
-			//if the operation has multiple key : 
-			if (isMultiProfileTransaction(operations)) {
-				List<Integer> transactionProfiles = getTransactionProfiles(operations);
-				List<Integer> unknownProfiles = getUnknownProfiles(operations);
-				//fetch tables unknown profiles
+			//worst case execution, we need to fetch before executing the multiple key transaction
+			if (unknownProfiles.size() != 0) {
 				migrate(unknownProfiles);
-				
-				//convert them to one category
-				int transactionKey = implodeProfiles(transactionProfiles);
-				
-				//execute transaction
-				
-				
-				//retransform to multiple key
-				explodeProfile(transactionKey);
-				
-				opList = null;
+			}
+			
+			for (int profile : transactionProfiles)
+				profileMutexes.get(profile).writeLock().lock();
+			
+			List<Integer> tempProfile = implodeProfiles(transactionProfiles);
+
+			//execute multikey transaction
+			result = internalExecute(convertOperations(operations, tempProfile));
+			
+			explodeProfile(tempProfile);
+			
+			for (int profile : transactionProfiles)
+				profileMutexes.get(profile).writeLock().unlock();
+		}
+		
+		return result;
+	}
+	
+	private List<oracle.kv.Operation> convertOperations (List<Operation> operations, List<Integer> newPrimaryKey) {
+		List<oracle.kv.Operation> operationList = new ArrayList<oracle.kv.Operation>();
+
+		for (Operation operation : operations) {
+			if (operation instanceof WriteOperation) {
+				operationList.addAll(getAddDataTransaction(operation.getData(), newPrimaryKey));
 			}
 			else {
-				opList = convertOperations(operations);
+				operationList.addAll(getRemoveDataTransaction(operation.getData(), newPrimaryKey));
 			}
-			
-			boolean hasExecuted = false;
-			do {
-			    try {
-					List<oracle.kv.OperationResult> res = store.execute(opList);
-					result.addAll(KVResult2OperationResult(res));
-					hasExecuted = true;
-					
-				} catch (DurabilityException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (OperationExecutionException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (FaultException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			} while (! hasExecuted);
 		}
+		
+		return operationList;
+	}
+	
+	
+	private List<oracle.kv.Operation> convertOperations (List<Operation> operations) {
+		List<oracle.kv.Operation> operationList = new ArrayList<oracle.kv.Operation>();
+
+		for (Operation operation : operations) {
+			if (operation instanceof WriteOperation) {
+				operationList.addAll(getAddDataTransaction(operation.getData()));
+			}
+			else {
+				operationList.addAll(getRemoveDataTransaction(operation.getData()));
+			}
+		}
+		
+		return operationList;
+	}
+	
+	
+	private List<OperationResult> internalExecute(List<oracle.kv.Operation> operations) {
+		boolean hasExecuted = false;
+		List<OperationResult> result = new ArrayList<OperationResult>();
+		do {
+		    try {
+				List<oracle.kv.OperationResult> res = store.execute(operations);
+				result.addAll(KVResult2OperationResult(res));
+				hasExecuted = true;
+				
+			} catch (DurabilityException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (OperationExecutionException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (FaultException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		} while (! hasExecuted);
 		
 		return result;
 	}
@@ -269,48 +341,123 @@ public class KVDB implements KVDBInterface {
 		return operationResult;
 	}
 	
-	
-	private List<oracle.kv.Operation> convertOperations (List<Operation> operations) {
+	/**
+	 * get the transaction matching the operation. if new primary key is set, shift keys
+	 * @param data
+	 * @param newPrimaryKey
+	 * @return
+	 */
+	private List<oracle.kv.Operation> getAddDataTransaction (Data data) {
+		int dataId = data.getId();
+		int category = data.getCategory();
+		Key key;
+		OperationFactory operationFactory = store.getOperationFactory();
 		List<oracle.kv.Operation> operationList = new ArrayList<oracle.kv.Operation>();
-
-		for (Operation operation : operations) {
-			if (operation instanceof WriteOperation) {
-				operationList.addAll(getAddDataTransaction(operation.getData()));
-			}
-			else {
-				operationList.addAll(getRemoveDataTransaction(operation.getData()));
-			}
+		
+		for (int i = 0; i < nbInt + nbString; i++) {
+			List<String> att = new ArrayList<String>();
+    		att.add(new Integer(dataId).toString());
+    		att.add(new Integer(i).toString());
+    		key = Key.createKey("" + category, att);
+    		
+    		if (i < nbInt)
+    			operationList.add(operationFactory.createPut(key, Value.createValue(data.getListNumber().get(i).toString().getBytes())));
+    		else
+    			operationList.add(operationFactory.createPut(key, Value.createValue(data.getListString().get(i - nbInt).toString().getBytes())));
 		}
 		
 		return operationList;
 	}
 	
 	/**
-	 * transfuse to target given profiles
-	 * @param localProfiles
-	 * @param target
+	 * get the transaction matching the operation. if new primary key is set, shift keys
+	 * @param data
+	 * @param newPrimaryKey
+	 * @return
 	 */
-	@Override
-	public void transfuseData(int profile, KVDBInterface target) {
-		List<Data> unusedData = new ArrayList<Data>();
-		unusedData.addAll(getAllDataFromProfile(profile));
+	private List<oracle.kv.Operation> getRemoveDataTransaction (Data data) {
+		int dataId = data.getId();
+		int category = data.getCategory();
+		Key key;
+		OperationFactory operationFactory = store.getOperationFactory();
+		List<oracle.kv.Operation> operationList = new ArrayList<oracle.kv.Operation>();
 		
-		//data 2 transaction
-		List<Operation> transfuseOperations = new ArrayList<Operation>();
-		for (Data data : unusedData) {
-			transfuseOperations.add(new WriteOperation(data));
+		for (int i = 0; i < nbInt + nbString; i++) {
+			List<String> att = new ArrayList<String>();
+    		att.add(new Integer(dataId).toString());
+    		att.add(new Integer(i).toString());
+    		key = Key.createKey("" + category, att);
+    		operationList.add(operationFactory.createDelete(key));
 		}
 		
-		//add them to target (inject)
-		target.injectData(transfuseOperations);
+		return operationList;
+	}
+	
+	/**
+	 * get the transaction matching the operation. if new primary key is set, shift keys
+	 * @param data
+	 * @param newPrimaryKey
+	 * @return
+	 */
+	private List<oracle.kv.Operation> getAddDataTransaction (Data data, List<Integer> newPrimaryKey) {
+		int dataId = data.getId();
+		int category = data.getCategory();
+		Key key;
+		OperationFactory operationFactory = store.getOperationFactory();
+		List<oracle.kv.Operation> operationList = new ArrayList<oracle.kv.Operation>();
 		
-		//remove them from here (delete)
-		List<Operation> deleteOperations = new ArrayList<Operation>();
-		for (Data data : unusedData) {
-			deleteOperations.add(new DeleteOperation(data));
+		for (int i = 0; i < nbInt + nbString; i++) {
+			List<String> att = new ArrayList<String>();
+			att.add(new Integer(category).toString());
+    		att.add(new Integer(dataId).toString());
+    		att.add(new Integer(i).toString());
+    		
+    		List<String> prim = new ArrayList<String>();
+    		for (int c : newPrimaryKey) {
+	    		prim.add(new Integer(newPrimaryKey.get(c)).toString());
+    		}
+    		
+    		key = Key.createKey(prim, att);
+    		
+    		if (i < nbInt)
+    			operationList.add(operationFactory.createPut(key, Value.createValue(data.getListNumber().get(i).toString().getBytes())));
+    		else
+    			operationList.add(operationFactory.createPut(key, Value.createValue(data.getListString().get(i - nbInt).toString().getBytes())));
 		}
-		executeOperations(deleteOperations);
-		localProfiles.remove(profile);
+		
+		return operationList;
+	}
+	
+	/**
+	 * get the transaction matching the operation. if new primary key is set, shift keys
+	 * @param data
+	 * @param newPrimaryKey
+	 * @return
+	 */
+	private List<oracle.kv.Operation> getRemoveDataTransaction (Data data, List<Integer> newPrimaryKey) {
+		int dataId = data.getId();
+		int category = data.getCategory();
+		Key key;
+		OperationFactory operationFactory = store.getOperationFactory();
+		List<oracle.kv.Operation> operationList = new ArrayList<oracle.kv.Operation>();
+		
+		for (int i = 0; i < nbInt + nbString; i++) {
+			List<String> att = new ArrayList<String>();
+			att.add(new Integer(category).toString());
+    		att.add(new Integer(dataId).toString());
+    		att.add(new Integer(i).toString());
+    		
+    		List<String> prim = new ArrayList<String>();
+    		for (int c : newPrimaryKey) {
+	    		prim.add(new Integer(newPrimaryKey.get(c)).toString());
+    		}
+    		
+    		key = Key.createKey(prim, att);
+    		
+    		operationList.add(operationFactory.createDelete(key));
+		}
+		
+		return operationList;
 	}
 	
 	
@@ -341,60 +488,35 @@ public class KVDB implements KVDBInterface {
 		return datas;
 	}
 	
-	/**
-	 * Create a list of operations to add a data object
-	 * @param data
-	 * @return
-	 */
-	private List<oracle.kv.Operation> getAddDataTransaction (Data data) {
-		int dataId = data.getId();
-		int category = data.getCategory();
-		Key key;
-		OperationFactory operationFactory = store.getOperationFactory();
-		List<oracle.kv.Operation> operationList = new ArrayList<oracle.kv.Operation>();
-		
-		for (int i = 0; i < nbInt + nbString; i++) {
-			List<String> att = new ArrayList<String>();
-    		att.add(new Integer(dataId).toString());
-    		att.add(new Integer(i).toString());
-    		key = Key.createKey("" + category, att);
-    		
-    		if (i < nbInt)
-    			operationList.add(operationFactory.createPut(key, Value.createValue(data.getListNumber().get(i).toString().getBytes())));
-    		else
-    			operationList.add(operationFactory.createPut(key, Value.createValue(data.getListString().get(i - nbInt).toString().getBytes())));
-		}
-		
-		return operationList;
-	}
 	
-	@Override
-	public String toString() {
-		return "KVDB [id=" + id + ", storeName=" + storeName + ", profiles="
-				+ localProfiles + "]";
-	}
-
 	/**
-	 * Create a list of operations to delete a data object
-	 * @param data
-	 * @return
+	 * transfuse to target given profiles
+	 * @param localProfiles
+	 * @param target
 	 */
-	private List<oracle.kv.Operation> getRemoveDataTransaction (Data data) {
-		int dataId = data.getId();
-		int category = data.getCategory();
-		Key key;
-		OperationFactory operationFactory = store.getOperationFactory();
-		List<oracle.kv.Operation> operationList = new ArrayList<oracle.kv.Operation>();
+	@Override
+	public void transfuseData(int profile, KVDBInterface target) {
+		List<Data> unusedData = new ArrayList<Data>();
+		unusedData.addAll(getAllDataFromProfile(profile));
 		
-		for (int i = 0; i < nbInt + nbString; i++) {
-			List<String> att = new ArrayList<String>();
-    		att.add(new Integer(dataId).toString());
-    		att.add(new Integer(i).toString());
-    		key = Key.createKey("" + category, att);
-    		operationList.add(operationFactory.createDelete(key));
+		//data 2 transaction
+		List<Operation> transfuseOperations = new ArrayList<Operation>();
+		for (Data data : unusedData) {
+			transfuseOperations.add(new WriteOperation(data));
 		}
 		
-		return operationList;
+		//add them to target (inject)
+		target.injectData(transfuseOperations);
+		
+		//remove them from here (delete)
+		List<Operation> deleteOperations = new ArrayList<Operation>();
+		for (Data data : unusedData) {
+			deleteOperations.add(new DeleteOperation(data));
+		}
+		executeOperations(deleteOperations);
+		
+		localProfiles.remove(profile);
+		profileMutexes.remove(profile);
 	}
 	
 	
@@ -427,6 +549,7 @@ public class KVDB implements KVDBInterface {
 			System.out.println("targetServer having " + profile + " = " + kvdb.getId());
 			kvdb.transfuseData(profile, this);
 			localProfiles.put(profile, profile);
+			profileMutexes.put(profile, new ReentrantReadWriteLock(true));
 		}
 		
 		//end migration
@@ -582,4 +705,11 @@ public class KVDB implements KVDBInterface {
 			return false;
 		return true;
 	}
+	
+	@Override
+	public String toString() {
+		return "KVDB [id=" + id + ", storeName=" + storeName + ", profiles="
+				+ localProfiles + "]";
+	}
+
 }

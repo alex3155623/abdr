@@ -71,14 +71,26 @@ localProfiles :
 transaction multiclé : 
 	pendant la procédure de fusion transaction fission : 
 		- on ne veut pas qu'il y ait des transactions dessus
-		- cela n'arrive pas pour les profils migrés de par la nature lecteur/ecrivain
-			qui lock les nouvelles transactions
+		- pendant les migration, on n'a pas ce problème
+		- par contre, après les migrations, on doit également bloquer les profils
 			
 		- on pourrait utiliser le même stratagème pour les profils locaux
 			- readerwriter pour tous les profils locaux
 			- read pour les transactions normales
 			- write pour les transactions de fusion
 
+pipeline de la transaction :
+	 
+	- check les profils touchés
+	- si monoprofil : 
+		- c'est qu'on attaque un profil local
+		- verroux en lecture sur ce profil
+
+	- si c'est multiprofil : 
+		- on doit check si on a tous les profils requis
+		- si il manque des profils, migrations
+		- sur tous les profils, on place un verroux en écriture
+		
 
 
 
