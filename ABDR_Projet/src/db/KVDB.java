@@ -51,8 +51,8 @@ public class KVDB implements KVDBInterface {
     private String hostName = "localhost";
     private String hostPort = "5000";
     
-    private final int nbInt = 1;
-    private final int nbString = 1;
+    private final int nbInt = 5;
+    private final int nbString = 5;
     private final int nbObjects = 2;
     private final int nbProfile = 5;
 
@@ -172,6 +172,7 @@ public class KVDB implements KVDBInterface {
 				Value value = profileObject.getValue().getValue();
 				List<String> newMinorKey = oldKey.getFullPath();
 				Key key = Key.createKey(prim, newMinorKey);
+				
 				store.put(key, value);
 				store.delete(oldKey);
 			}
@@ -181,8 +182,12 @@ public class KVDB implements KVDBInterface {
 	}
 	
 	private void explodeProfile(List<Integer> fusedProfilesMasterKey) {
-		SortedMap<Key,ValueVersion> profileObjects = store.multiGet(Key.createKey(fusedProfilesMasterKey + ""), null, null);
+		List<String> prim = new ArrayList<String>();
+		for (int partialFused : fusedProfilesMasterKey) {
+			prim.add(partialFused + "");
+		}
 		
+		SortedMap<Key,ValueVersion> profileObjects = store.multiGet(Key.createKey(prim), null, null);
 		//for every values, insert them to their old profile and delete it from it's temporary one
 		for (Entry<Key, ValueVersion> profileObject : profileObjects.entrySet()) {
 			Key oldKey = profileObject.getKey();
@@ -190,6 +195,7 @@ public class KVDB implements KVDBInterface {
 			List<String> newMinorKey = oldKey.getMinorPath().subList(1, oldKey.getMinorPath().size());
 			List<String> newMajorKey = oldKey.getMinorPath().subList(0, 1);
 			Key key = Key.createKey(newMajorKey, newMinorKey);
+			
 			store.put(key, value);
 			store.delete(oldKey);
 		}
@@ -202,7 +208,6 @@ public class KVDB implements KVDBInterface {
 	@Override
 	public List<OperationResult> executeOperations(List<Operation> operations) {
 		List<OperationResult> result = new ArrayList<OperationResult>();
-		List<oracle.kv.Operation> opList;
 		
 		//get on a single data
 		if ((operations.size() == 1) && (operations.get(0) instanceof ReadOperation)) {
