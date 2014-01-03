@@ -1,6 +1,8 @@
 TODO : 
 
-- fusion de catégories le temps d'une transaction multiclé
+- bug de temps en temps sur le fait que on croit lire un int alors qu'on lit un string
+
+- bug de temps en temps sur à la sortie de writelock unlock, le mutex n'existe plus
 
 - la migration doit ne pas utiliser les transactions pour éviter les problèmes d'exception si transaction trop grosse
 

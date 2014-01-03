@@ -54,7 +54,7 @@ public class TestKVDB {
 	    
 	    Set<Integer> keys = kvdbs.keySet();
 	    for (Integer kvdbIndex : keys) {
-	    	//kvdbs.get(kvdbIndex).startDB();
+	    	kvdbs.get(kvdbIndex).startDB();
 	    }
 	    
 	    //init monitors
@@ -270,6 +270,14 @@ public class TestKVDB {
 		
 		assertEquals(1, results.size());
 		assertTrue(! results.get(0).isSuccess());
+		
+		
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 	
 	@Test
@@ -304,8 +312,8 @@ public class TestKVDB {
 		operations.add(new WriteOperation(datas.get(1)));
 		operations.add(new WriteOperation(datas.get(2)));
 		
-		System.out.println("----------------------avant add");
-		kvdbs.get(0).printDB();
+		//System.out.println("----------------------avant add");
+		//kvdbs.get(0).printDB();
 		//on ajoute ces elements
 		List<OperationResult> results = kvdbs.get(0).executeOperations(operations);
 
@@ -443,9 +451,11 @@ public class TestKVDB {
 		System.out.println(" ------------------------DB0 apres");
 		kvdbs.get(0).printDB();
 		System.out.println(" ------------------------DB1 apres");
-		kvdbs.get(5).printDB();*/
+		kvdbs.get(5).printDB();
+		*/
 		
-		/*int i = 5;
+		/*
+		int i = 5;
 		while (i > 0) {
 			i--;
 			System.out.println(" ------------------------DB0 (high load)");

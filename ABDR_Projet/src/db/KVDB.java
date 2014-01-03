@@ -61,7 +61,6 @@ public class KVDB implements KVDBInterface {
     private Map<Integer, Integer> localProfiles = new ConcurrentHashMap<Integer, Integer>();
     private Map<Integer, ReadWriteLock> profileMutexes = new ConcurrentHashMap<Integer, ReadWriteLock>();
 
-    private TokenInterface myToken;
     private Map<Integer, TokenInterface> tokens = new ConcurrentHashMap<Integer, TokenInterface>();
     
 	
@@ -71,7 +70,6 @@ public class KVDB implements KVDBInterface {
 		this.hostName = hostName;
 		this.hostPort = hostPort;
 		this.monitorMapping = monitorMapping;
-		this.myToken = new SleepingToken(id, this);
 		initAll();
 	}
 	
@@ -134,11 +132,12 @@ public class KVDB implements KVDBInterface {
 	
 	private List<Integer> getUnknownProfiles(List<Operation> operations) {
 		List<Integer> unknownProfiles = new ArrayList<Integer>();
-		
-		for (Operation operation : operations) {
-			int currentProfile = operation.getData().getCategory();
-			if (! localProfiles.containsKey(currentProfile))
-				unknownProfiles.add(currentProfile);
+		synchronized (localProfiles) {
+			for (Operation operation : operations) {
+				int currentProfile = operation.getData().getCategory();
+				if (! localProfiles.containsKey(currentProfile))
+					unknownProfiles.add(currentProfile);
+			}
 		}
 		
 		return unknownProfiles;
@@ -217,6 +216,7 @@ public class KVDB implements KVDBInterface {
 		}
 		//single key transaction (we should have this key so we don't check)
 		else if (getTransactionProfiles(operations).size() == 1) {
+			System.out.println(id + "++++++++++++ profile mutexes of profile " + getTransactionProfiles(operations).get(0) + " = " + profileMutexes.get(getTransactionProfiles(operations).get(0)));
 			profileMutexes.get(operations.get(0).getData().getCategory()).readLock().lock();
 			result = internalExecute(convertOperations(operations));
 			profileMutexes.get(operations.get(0).getData().getCategory()).readLock().unlock();
@@ -503,15 +503,23 @@ public class KVDB implements KVDBInterface {
 	public void transfuseData(int profile, KVDBInterface target) {
 		List<Data> unusedData = new ArrayList<Data>();
 		unusedData.addAll(getAllDataFromProfile(profile));
+		System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!unused data size = " + unusedData.size());
 		
 		//data 2 transaction
 		List<Operation> transfuseOperations = new ArrayList<Operation>();
 		for (Data data : unusedData) {
 			transfuseOperations.add(new WriteOperation(data));
 		}
-		
+		try {
+		System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!transfuse operation size = " + transfuseOperations.size() + " of type " + transfuseOperations.get(0).getData().getCategory());
+
 		//add them to target (inject)
-		target.injectData(transfuseOperations);
+		target.executeOperations(transfuseOperations);
+		}catch (Exception e) {
+			System.out.println(id + " DAGNABIT " + transfuseOperations.size());
+			e.printStackTrace();
+			System.out.println(id + " end dagnabit");
+		}
 		
 		//remove them from here (delete)
 		List<Operation> deleteOperations = new ArrayList<Operation>();
@@ -519,7 +527,7 @@ public class KVDB implements KVDBInterface {
 			deleteOperations.add(new DeleteOperation(data));
 		}
 		executeOperations(deleteOperations);
-		
+		System.out.println(id + " OKKKKKKKKKKKKKKKKKKKK");
 		localProfiles.remove(profile);
 		profileMutexes.remove(profile);
 	}
@@ -541,11 +549,13 @@ public class KVDB implements KVDBInterface {
 		//ask migration of the list of profile to me
 		for (Integer profile : profiles) {
 			targetServers.add(monitorMapping.get(profile).notifyMigration(this, profile));
+			profileMutexes.put(profile, new ReentrantReadWriteLock(true));
 		}
 		
 		//begin migration of profiles to me
 		for (int i = 0; i < profiles.size(); i++) {
 			int profile = profiles.get(i);
+			
 			KVDBInterface kvdb = targetServers.get(i);
 			if (kvdb.equals(this)) {
 				System.out.println("already having profile");
@@ -554,7 +564,6 @@ public class KVDB implements KVDBInterface {
 			System.out.println("targetServer having " + profile + " = " + kvdb.getId());
 			kvdb.transfuseData(profile, this);
 			localProfiles.put(profile, profile);
-			profileMutexes.put(profile, new ReentrantReadWriteLock(true));
 		}
 		
 		//end migration
@@ -571,7 +580,7 @@ public class KVDB implements KVDBInterface {
 			private boolean hasThrownToken = false;
 			
 			private synchronized void throwToken() {
-					tokens.put(id, KVDB.this.myToken);
+					tokens.put(id, new SleepingToken(id, KVDB.this));
 					hasThrownToken = true;
 			}
 			
@@ -589,18 +598,19 @@ public class KVDB implements KVDBInterface {
 			
 			private List<Integer> getLowUsedProfiles() {
 				List<Integer> result = new ArrayList<Integer>();
-				if (localProfiles.size() != 0) 
-					result.add(localProfiles.keySet().iterator().next());
+				synchronized (localProfiles) {
+					if (localProfiles.size() != 0) {
+						result.add(localProfiles.keySet().iterator().next());
+						System.out.println(KVDB.this.id + " trying to eject " + result.get(0));
+					}
+				}
 				
-				System.out.println(KVDB.this.id + "trying to eject " + result);
 				return result;
 			}
 			
 			@Override
 			public void run() {
 				while (true) {
-					System.out.println(KVDB.this.id + " tokens = " + tokens);
-					
 					//check if we are busy, in this case, we consume the first token
 					if ((tokens.size() != 0) && hasHighLoad()) {
 						int tokenIndex = tokens.entrySet().iterator().next().getKey();
@@ -619,16 +629,21 @@ public class KVDB implements KVDBInterface {
 							tokens.remove(token);
 							hasThrownToken = false;
 							if (! hasHighLoad() && (token.getProfiles().size() != 0)) {
-								System.out.println(KVDB.this.id + " migrating :)");
+								//System.out.println("------------------------------------before migration of " + token.getProfiles().get(0));
+								//printDB();
 								migrate(token.getProfiles());
+								
+								//System.out.println("------------------------------------after migration of " + token.getProfiles().get(0));
+								//printDB();
+								
 							}
-							token.getProfiles().clear();
+							token.setProfiles(new ArrayList<Integer>());
 						}
 					}
 					
 					//if we detect that we do nothing, throw a sleeping token
 					if ((! hasThrownToken) && hasLowLoad()) {
-						System.out.println(KVDB.this.id + " throwing a token his sleeping token");
+						//System.out.println(KVDB.this.id + " throwing a token his sleeping token");
 						throwToken();
 					}
 					
@@ -639,7 +654,7 @@ public class KVDB implements KVDBInterface {
 					}
 					
 					try {
-						Thread.sleep(500);
+						Thread.sleep(5);
 					} catch (InterruptedException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -685,7 +700,7 @@ public class KVDB implements KVDBInterface {
 			store.multiDelete(Key.createKey("" + profile), null, null);
 		}*/
 
-		store.close();
+		//store.close();
 	}
 	
 

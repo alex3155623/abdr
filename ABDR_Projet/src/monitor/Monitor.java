@@ -84,8 +84,10 @@ public class Monitor implements MonitorInterface{
 		List<Integer> usedLocalProfiles = findProfile(operations);
 		
 		//for each profiles in the transaction, read lock
-		for (Integer profile : usedLocalProfiles) {
-			profileMutexes.get(profile).readLock().lock();
+		synchronized (this) {
+			for (Integer profile : usedLocalProfiles) {
+				profileMutexes.get(profile).readLock().lock();
+			}
 		}
 
 		// search the good kvstore and execute operation in kvdb
@@ -93,8 +95,11 @@ public class Monitor implements MonitorInterface{
 		
 		//execute the transaction on it
 		List<OperationResult> results = targetServer.executeOperations(operations);
-		for (Integer profile : usedLocalProfiles) {
-			profileMutexes.get(profile).readLock().unlock();
+		
+		synchronized (this) {
+			for (Integer profile : usedLocalProfiles) {
+				profileMutexes.get(profile).readLock().unlock();
+			}
 		}
 		
 		return results;
@@ -142,7 +147,9 @@ public class Monitor implements MonitorInterface{
 	@Override
 	public KVDB notifyMigration(KVDB newSource, int profile) {
 		KVDB result;
-		profileMutexes.get(profile).writeLock().lock();
+		synchronized(this) {
+			profileMutexes.get(profile).writeLock().lock();
+		}
 		result = serverMapping.get(profile);
 		
 		return result;
@@ -151,7 +158,9 @@ public class Monitor implements MonitorInterface{
 	@Override
 	public void notifyEndMigration(KVDB newSource, int profile){
 		serverMapping.put(profile, newSource);
-		profileMutexes.get(profile).writeLock().unlock();
+		synchronized(this) {
+			profileMutexes.get(profile).writeLock().unlock();
+		}
 	}
 
 	
