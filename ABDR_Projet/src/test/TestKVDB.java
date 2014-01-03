@@ -21,6 +21,7 @@ import transaction.OperationResult;
 import transaction.ReadOperation;
 import transaction.WriteOperation;
 import db.KVDB;
+import db.KVDBInterface;
 
 public class TestKVDB {
 	static String storeName = "kvstore";
@@ -49,6 +50,11 @@ public class TestKVDB {
 	    	int fakeId = (i * nbProfilePerKVDB) + (kvdbs.size() * nbProfilePerKVDB);
 			kvdbs.get(i * nbProfilePerKVDB).setLeftKVDB(kvdbs.get((fakeId - nbProfilePerKVDB) % (kvdbs.size() * nbProfilePerKVDB)));
 			kvdbs.get(i * nbProfilePerKVDB).setRightKVDB(kvdbs.get((fakeId + nbProfilePerKVDB) % (kvdbs.size() * nbProfilePerKVDB)));
+	    }
+	    
+	    Set<Integer> keys = kvdbs.keySet();
+	    for (Integer kvdbIndex : keys) {
+	    	kvdbs.get(kvdbIndex).startDB();
 	    }
 	    
 	    //init monitors
@@ -303,5 +309,11 @@ public class TestKVDB {
 		kvdbs.get(0).printDB();
 		System.out.println(" ------------------------DB1 apres");
 		kvdbs.get(5).printDB();*/
+		try {
+			Thread.sleep(5000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 }

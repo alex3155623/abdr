@@ -1,5 +1,7 @@
 TODO : 
 
+- finir jeton
+
 - fusion de catégories le temps d'une transaction multiclé
 
 - la migration doit ne pas utiliser les transactions pour éviter les problèmes d'exception si transaction trop grosse

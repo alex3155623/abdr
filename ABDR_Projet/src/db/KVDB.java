@@ -57,7 +57,8 @@ public class KVDB implements KVDBInterface {
     private Map<String, KVDBInterface> neighbourKvdbs = new HashMap<String, KVDBInterface>();
     private Map<Integer, Monitor> monitorMapping = new ConcurrentHashMap<Integer, Monitor>();
     private List<Integer> profiles = new ArrayList<Integer>();
-    
+
+    private TokenInterface myToken=  new SleepingToken(id, this);
     private Map<Integer, TokenInterface> tokens = new ConcurrentHashMap<Integer, TokenInterface>();
     
 	
@@ -220,32 +221,30 @@ public class KVDB implements KVDBInterface {
 	}
 	
 	/**
-	 * When overloaded, and having a token, transfuse to the token unused tables
+	 * transfuse to target given profiles
 	 * @param profiles
 	 * @param target
 	 */
 	@Override
-	public void transfuseData(List<Integer> profiles, KVDBInterface target) {
-		for (int profile : profiles) {
-			List<Data> unusedData = new ArrayList<Data>();
-			unusedData.addAll(getAllDataFromProfile(profile));
-			
-			//data 2 transaction
-			List<Operation> transfuseOperations = new ArrayList<Operation>();
-			for (Data data : unusedData) {
-				transfuseOperations.add(new WriteOperation(data));
-			}
-			
-			//add them to target (inject)
-			target.injectData(transfuseOperations);
-			
-			//remove them from here (delete)
-			List<Operation> deleteOperations = new ArrayList<Operation>();
-			for (Data data : unusedData) {
-				deleteOperations.add(new DeleteOperation(data));
-			}
-			executeOperations(deleteOperations);
+	public void transfuseData(int profile, KVDBInterface target) {
+		List<Data> unusedData = new ArrayList<Data>();
+		unusedData.addAll(getAllDataFromProfile(profile));
+		
+		//data 2 transaction
+		List<Operation> transfuseOperations = new ArrayList<Operation>();
+		for (Data data : unusedData) {
+			transfuseOperations.add(new WriteOperation(data));
 		}
+		
+		//add them to target (inject)
+		target.injectData(transfuseOperations);
+		
+		//remove them from here (delete)
+		List<Operation> deleteOperations = new ArrayList<Operation>();
+		for (Data data : unusedData) {
+			deleteOperations.add(new DeleteOperation(data));
+		}
+		executeOperations(deleteOperations);
 	}
 	
 	
@@ -378,7 +377,7 @@ public class KVDB implements KVDBInterface {
 	
 	@Override
 	public void startDB() {
-		Thread t = new Thread(new Runnable() {
+		Thread loadBalancer = new Thread(new Runnable() {
 			private boolean hasThrownToken = false;
 			
 			private synchronized void throwToken() {
@@ -395,7 +394,7 @@ public class KVDB implements KVDBInterface {
 			}
 			
 			private List<Integer> getLowUsedProfiles() {
-				return null;
+				return new ArrayList<Integer>();
 			}
 			
 			@Override
@@ -409,17 +408,21 @@ public class KVDB implements KVDBInterface {
 					//check if we have token to send
 					synchronized (this) {
 						if (tokens.size() != 0) {
-							//if we have thrown our token, check if it's there
+							//if we have thrown our token, check if it's there to steal some jobs
 							if (hasThrownToken) {
 								if (tokens.containsKey(id)) {
-									
+									TokenInterface token = tokens.get(id);
+									tokens.remove(token);
+									hasThrownToken = false;
+									if (! hasHighLoad())
+										migrate(token.getProfiles());
 								}
 							}
 							
 							//check if we are busy, in this case, we consume the first token
 							if (hasHighLoad()) {
-								TokenInterface token = tokens.get(0);
-								tokens.remove(token);
+								int tokenIndex = tokens.entrySet().iterator().next().getKey();
+								TokenInterface token = tokens.remove(tokenIndex);
 								token.getProfiles().addAll(getLowUsedProfiles());
 								token.getKvdb().sendToken(token);
 							}
@@ -429,9 +432,9 @@ public class KVDB implements KVDBInterface {
 							tokens.clear();
 						}
 					}
-					
+					System.out.println(id + ", et elles sont belles, c'est ce qu'on attend d'elles");
 					try {
-						Thread.sleep(10);
+						Thread.sleep(500);
 					} catch (InterruptedException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -440,7 +443,7 @@ public class KVDB implements KVDBInterface {
 				
 			}
 		});
-		t.start();
+		loadBalancer.start();
 	}
 	
 	
@@ -476,6 +479,7 @@ public class KVDB implements KVDBInterface {
 		/*for (Integer profile : this.profiles) {
 			store.multiDelete(Key.createKey("" + profile), null, null);
 		}*/
+
 		store.close();
 	}
 	
