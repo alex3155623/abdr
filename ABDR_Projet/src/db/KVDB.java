@@ -106,25 +106,67 @@ public class KVDB implements KVDBInterface {
 		}
         
         //foreach profile
-       for (int i = id; i < (id + nbProfile); i++) {
-        	localProfiles.put(i, i);
-        	
-        	//foreach object
-            for (int j = 0; j < nbObjects; j++) {
-            	//foreach attribute
-            	for (int k = 0; k < nbString + nbInt; k++) {
-            		List<String> att = new ArrayList<String>();
-            		att.add(new Integer(j).toString());
-            		att.add(new Integer(k).toString());
-            		key = Key.createKey("" + i,  att);
-            		store.put(key, Value.createValue(new Integer(0).toString().getBytes()));
-            	}
-            }
-        }
+		for (int i = id; i < (id + nbProfile); i++) {
+			localProfiles.put(i, i);
+
+			//foreach object
+			for (int j = 0; j < nbObjects; j++) {
+				//foreach attribute
+				for (int k = 0; k < nbString + nbInt; k++) {
+					List<String> att = new ArrayList<String>();
+					att.add(new Integer(j).toString());
+					att.add(new Integer(k).toString());
+					key = Key.createKey("" + i,  att);
+					store.put(key, Value.createValue(new Integer(0).toString().getBytes()));
+				}
+			}
+		}
     }
 	
 	private void initAll() {
 		initBase();
+	}
+	
+	private boolean isMultiProfileTransaction(List<Operation> operations) {
+		int profile = operations.get(0).getData().getCategory();
+		
+		for (Operation operation : operations) {
+			if (profile != operation.getData().getCategory())
+				return true;
+		}
+		return false;
+	}
+	
+	
+	private List<Integer> getUnknownProfiles(List<Operation> operations) {
+		List<Integer> unknownProfiles = new ArrayList<Integer>();
+		
+		for (Operation operation : operations) {
+			int currentProfile = operation.getData().getCategory();
+			if (! localProfiles.containsKey(currentProfile))
+				unknownProfiles.add(currentProfile);
+		}
+		
+		return unknownProfiles;
+	}
+	
+	private List<Integer> getTransactionProfiles(List<Operation> operations) {
+		Map<Integer, Integer> transactionProfiles = new HashMap<Integer, Integer>();
+		
+		for (Operation operation : operations) {
+			int currentProfile = operation.getData().getCategory();
+			transactionProfiles.put(currentProfile, currentProfile);
+		}
+		
+		return new ArrayList<Integer>(transactionProfiles.values());
+	}
+	
+	private int implodeProfiles(List<Integer> profiles) {
+		return 0;
+	}
+	
+	private void explodeProfile(int fusedProfilesMasterKey) {
+		
 	}
 	
 	
@@ -138,14 +180,31 @@ public class KVDB implements KVDBInterface {
 		}
 		else {
 			//sinon, c'est une transaction
+			List<oracle.kv.Operation> opList;
 			
 			//if the operation has multiple key : 
-			//fetch tables
-			//convert them to one category
-			//execute transaction
-			//retransform to multiple key
+			if (isMultiProfileTransaction(operations)) {
+				List<Integer> transactionProfiles = getTransactionProfiles(operations);
+				List<Integer> unknownProfiles = getUnknownProfiles(operations);
+				//fetch tables unknown profiles
+				migrate(unknownProfiles);
+				
+				//convert them to one category
+				int transactionKey = implodeProfiles(transactionProfiles);
+				
+				//execute transaction
+				
+				
+				//retransform to multiple key
+				explodeProfile(transactionKey);
+				
+				opList = null;
+			}
+			else {
+				opList = convertOperations(operations);
+			}
+			
 			boolean hasExecuted = false;
-			List<oracle.kv.Operation> opList = convertOperations(operations);
 			do {
 			    try {
 					List<oracle.kv.OperationResult> res = store.execute(opList);
@@ -339,14 +398,6 @@ public class KVDB implements KVDBInterface {
 	}
 	
 	
-	/**thread qui doit passer les jetons dans un anneau
-		si moi même je ne fais rien, j'envoi un jeton qui doit faire le tour
-			si les autres sont surchargés, le premier qui recoit mon jeton m'envoie les tables sur lequel il ne travaille pas trop (le surchargé garde les gros)
-			je détecte qu'on menvoie du travail en regardant mon jeton recut : 
-			 	- si jeton vide, alors il a faits le tour de l'anneau
-			 	- sinon, on m'envoiee du travail
-	*/
-	
 	@Override
 	public void injectData(List<Operation> data) {
 		executeOperations(data);
@@ -368,8 +419,13 @@ public class KVDB implements KVDBInterface {
 		//begin migration of profiles to me
 		for (int i = 0; i < profiles.size(); i++) {
 			int profile = profiles.get(i);
-			System.out.println("targetServer having " + profile + " = " + targetServers.get(i).getId());
-			targetServers.get(i).transfuseData(profile, this);
+			KVDBInterface kvdb = targetServers.get(i);
+			if (kvdb.equals(this)) {
+				System.out.println("already having profile");
+				continue;
+			}
+			System.out.println("targetServer having " + profile + " = " + kvdb.getId());
+			kvdb.transfuseData(profile, this);
 			localProfiles.put(profile, profile);
 		}
 		

@@ -1,7 +1,5 @@
 TODO : 
 
-- finir jeton
-
 - fusion de catégories le temps d'une transaction multiclé
 
 - la migration doit ne pas utiliser les transactions pour éviter les problèmes d'exception si transaction trop grosse
@@ -49,5 +47,45 @@ TODO :
 //envoyer les autres token
 //si j'ai beaucoup de travail et des token, je me sert
 //si mon token est revenu, je check son contenu
+
+
+
+
+Problèmes : 
+	- lors de multiple transactions multiclé : 
+		- risque de demander plusieurs fois les profiles aux moniteurs concernés
+		- la premiere fois justifiée
+		- les autres fois il ne faut pas faire de migration
+			- devrait quand même marcher, mais if faut un check avant de faire la 
+				migration si c'est this
+
+localProfiles : 
+	- est accédé + édité lors des migrations
+		- les migrations sont faits par forçage
+		- ou par transaction multiclé
+
+		-> il faut donc un mutex pour s'assurer de la cohérence
+			- on peut le faire via un verroux de type lecteur/écrivain
+		-> on peut continuer à utiliser le concurrenthashmap
+
+transaction multiclé : 
+	pendant la procédure de fusion transaction fission : 
+		- on ne veut pas qu'il y ait des transactions dessus
+		- cela n'arrive pas pour les profils migrés de par la nature lecteur/ecrivain
+			qui lock les nouvelles transactions
+			
+		- on pourrait utiliser le même stratagème pour les profils locaux
+			- readerwriter pour tous les profils locaux
+			- read pour les transactions normales
+			- write pour les transactions de fusion
+
+
+
+
+
+
+
+
+
 
 
