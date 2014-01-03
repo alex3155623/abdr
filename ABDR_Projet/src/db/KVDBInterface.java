@@ -16,6 +16,7 @@ public interface KVDBInterface extends KVDBLoadBalancer {
 	//void attendre les jetons
 		//- le jeton contient les tables associés
 	
+	int getId();
 	
 	void transfuseData(int profile, KVDBInterface target);
 	

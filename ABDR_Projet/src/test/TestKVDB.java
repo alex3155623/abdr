@@ -70,7 +70,7 @@ public class TestKVDB {
 			kvdbs.get(dbIndex).closeDB();
 	    }
 	}
-	
+	/*
 	@Test
 	public void testAddDelete() {
 		int category = 4;
@@ -271,7 +271,7 @@ public class TestKVDB {
 		assertEquals(1, results.size());
 		assertTrue(! results.get(0).isSuccess());
 	}
-	
+	*/
 	@Test
 	public void testTransfusion() {
 		/*List<Integer> transfusedProfiles = new ArrayList<Integer>();
@@ -309,11 +309,20 @@ public class TestKVDB {
 		kvdbs.get(0).printDB();
 		System.out.println(" ------------------------DB1 apres");
 		kvdbs.get(5).printDB();*/
-		try {
-			Thread.sleep(5000);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		
+		int i = 5;
+		while (i > 0) {
+			i--;
+			System.out.println(" ------------------------DB0 (high load)");
+			kvdbs.get(0).printDB();
+			System.out.println(" ------------------------DB5 (low load)");
+			kvdbs.get(5).printDB();
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 }

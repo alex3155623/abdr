@@ -54,5 +54,10 @@ public class SleepingToken implements TokenInterface {
 			return false;
 		return true;
 	}
+
+	@Override
+	public String toString() {
+		return "SleepingToken [id=" + id + ", profiles=" + profiles + "]";
+	}
 	
 }
