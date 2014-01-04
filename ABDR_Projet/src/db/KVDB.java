@@ -135,7 +135,7 @@ public class KVDB implements KVDBInterface {
 		synchronized (localProfiles) {
 			for (Operation operation : operations) {
 				int currentProfile = operation.getData().getCategory();
-				if (! localProfiles.containsKey(currentProfile))
+				if ((! localProfiles.containsKey(currentProfile)) && (! unknownProfiles.contains(currentProfile)))
 					unknownProfiles.add(currentProfile);
 			}
 		}
@@ -148,7 +148,8 @@ public class KVDB implements KVDBInterface {
 		
 		for (Operation operation : operations) {
 			int currentProfile = operation.getData().getCategory();
-			transactionProfiles.put(currentProfile, currentProfile);
+			if (! transactionProfiles.containsKey(currentProfile))
+				transactionProfiles.put(currentProfile, currentProfile);
 		}
 		
 		return new ArrayList<Integer>(transactionProfiles.values());
@@ -158,7 +159,7 @@ public class KVDB implements KVDBInterface {
 	private List<Integer> implodeProfiles(List<Integer> profiles) {
 		List<String> prim = new ArrayList<String>();
 		for (int c : profiles) {
-    		prim.add(new Integer(profiles.get(c)).toString());
+    		prim.add(c + "");
 		}
 
 		for (int profile : profiles) {
@@ -207,6 +208,7 @@ public class KVDB implements KVDBInterface {
 	@Override
 	public List<OperationResult> executeOperations(List<Operation> operations) {
 		List<OperationResult> result = new ArrayList<OperationResult>();
+		System.out.println("KVDB " + id + " solicité");
 		
 		//get on a single data
 		if ((operations.size() == 1) && (operations.get(0) instanceof ReadOperation)) {
@@ -216,7 +218,7 @@ public class KVDB implements KVDBInterface {
 		}
 		//single key transaction (we should have this key so we don't check)
 		else if (getTransactionProfiles(operations).size() == 1) {
-			System.out.println(id + "++++++++++++ profile mutexes of profile " + getTransactionProfiles(operations).get(0) + " = " + profileMutexes.get(getTransactionProfiles(operations).get(0)));
+			System.out.println(id + " single key transaction with key " + getTransactionProfiles(operations).get(0) + ", list of op = " + operations);
 			profileMutexes.get(operations.get(0).getData().getCategory()).readLock().lock();
 			result = internalExecute(convertOperations(operations));
 			profileMutexes.get(operations.get(0).getData().getCategory()).readLock().unlock();
@@ -230,7 +232,7 @@ public class KVDB implements KVDBInterface {
 			if (unknownProfiles.size() != 0) {
 				migrate(unknownProfiles);
 			}
-			
+
 			for (int profile : transactionProfiles)
 				profileMutexes.get(profile).writeLock().lock();
 			
@@ -419,7 +421,7 @@ public class KVDB implements KVDBInterface {
     		
     		List<String> prim = new ArrayList<String>();
     		for (int c : newPrimaryKey) {
-	    		prim.add(new Integer(newPrimaryKey.get(c)).toString());
+	    		prim.add(c + "");
     		}
     		
     		key = Key.createKey(prim, att);
@@ -454,7 +456,7 @@ public class KVDB implements KVDBInterface {
     		
     		List<String> prim = new ArrayList<String>();
     		for (int c : newPrimaryKey) {
-	    		prim.add(new Integer(newPrimaryKey.get(c)).toString());
+	    		prim.add(c + "");
     		}
     		
     		key = Key.createKey(prim, att);
@@ -503,7 +505,7 @@ public class KVDB implements KVDBInterface {
 	public void transfuseData(int profile, KVDBInterface target) {
 		List<Data> unusedData = new ArrayList<Data>();
 		unusedData.addAll(getAllDataFromProfile(profile));
-		System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!unused data size = " + unusedData.size());
+		//System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!unused data size = " + unusedData.size());
 		
 		//data 2 transaction
 		List<Operation> transfuseOperations = new ArrayList<Operation>();
@@ -548,6 +550,7 @@ public class KVDB implements KVDBInterface {
 		
 		//ask migration of the list of profile to me
 		for (Integer profile : profiles) {
+			System.out.println(id + " is asking migration of profile " + profile);
 			targetServers.add(monitorMapping.get(profile).notifyMigration(this, profile));
 			profileMutexes.put(profile, new ReentrantReadWriteLock(true));
 		}
@@ -579,7 +582,7 @@ public class KVDB implements KVDBInterface {
 		Thread loadBalancer = new Thread(new Runnable() {
 			private boolean hasThrownToken = false;
 			
-			private synchronized void throwToken() {
+			private void throwToken() {
 					tokens.put(id, new SleepingToken(id, KVDB.this));
 					hasThrownToken = true;
 			}
@@ -653,12 +656,12 @@ public class KVDB implements KVDBInterface {
 						tokens.clear();
 					}
 					
-					try {
-						Thread.sleep(5);
+					/*try {
+						Thread.sleep(10);
 					} catch (InterruptedException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
-					}
+					}*/
 				}
 				
 			}

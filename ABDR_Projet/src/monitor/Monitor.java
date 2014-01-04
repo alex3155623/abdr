@@ -111,9 +111,9 @@ public class Monitor implements MonitorInterface{
 			  public int compare(Operation op1, Operation op2) {
 			     int data1 = op1.getData().getCategory();
 			     int data2 = op2.getData().getCategory();
-			     if (data2 < data1) return -1;
+			     if (data2 < data1) return 1;
 			     else if(data2 == data1) return 0;
-			     else return 1;
+			     else return -1;
 			  }
 		});
 		

@@ -44,7 +44,7 @@ public class Main {
 		Monitor monitor = new Monitor(kvdbs);
 	    
 	    //TODO create applications
-		Application.start(monitor);
+		//Application.start(monitor);
 	    
 	    //execute benchmark
 	}

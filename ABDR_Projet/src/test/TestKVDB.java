@@ -58,7 +58,7 @@ public class TestKVDB {
 	    }
 	    
 	    //init monitors
-	    for (int i = 0; i < nbProfilePerKVDB; i++) {
+	    for (int i = 0; i < nbProfilePerKVDB * 2; i++) {
 	    	monitors.put(i, new Monitor(tempList, 0));
 	    }
 	}
@@ -409,29 +409,142 @@ public class TestKVDB {
 		assertEquals(1, results.size());
 		assertTrue(! results.get(0).isSuccess());
 		
-		System.out.println("----------------------apres delete");
-		kvdbs.get(0).printDB();
+		//System.out.println("----------------------apres delete");
+		//kvdbs.get(0).printDB();
 	}
 	
 	
-	
 	@Test
-	public void testTransfusion() {
-		/*List<Integer> transfusedProfiles = new ArrayList<Integer>();
-		transfusedProfiles.add(1);
-		transfusedProfiles.add(3);
+	public void testTransactionAvecMigration() {
+		int category = 4;
+		int id = 42;
 		
-		System.out.println(" ------------------------DB0 avant");
-		kvdbs.get(0).printDB();
-		System.out.println(" ------------------------DB1 avant");
-		kvdbs.get(5).printDB();
+		List<Data> datas = new ArrayList<Data>();
+		Data data;
+		for (int i = 4; i < 7; i++) {
+			data = new Data();
+			data.setCategory(i);
+			data.setId(id + i);
+			data.getListNumber().add(700 + i);
+			data.getListNumber().add(701 + i);
+			data.getListNumber().add(702 + i);
+			data.getListNumber().add(703 + i);
+			data.getListNumber().add(704 + i);
+			
+			data.getListString().add("s" + i);
+			data.getListString().add("s" + i);
+			data.getListString().add("s" + i);
+			data.getListString().add("s" + i);
+			data.getListString().add("s" + i);
+			
+			datas.add(data);
+		}
 		
-		kvdbs.get(0).transfuseData(transfusedProfiles, kvdbs.get(5));
+		//creation d'une transaction pour ajouter 3 elements
+		List<Operation> operations = new ArrayList<Operation>();
+		operations.add(new WriteOperation(datas.get(0)));
+		operations.add(new WriteOperation(datas.get(1)));
+		operations.add(new WriteOperation(datas.get(2)));
 		
-		System.out.println(" ------------------------DB0 apres");
-		kvdbs.get(0).printDB();
-		System.out.println(" ------------------------DB1 apres");
-		kvdbs.get(5).printDB();*/
+		//System.out.println("----------------------avant add");
+		//kvdbs.get(0).printDB();
+		//on ajoute ces elements
+		List<OperationResult> results = kvdbs.get(0).executeOperations(operations);
+
+		assertEquals(3, results.size());
+		
+		
+		for (int i = 0; i < results.size(); i++)
+			assertTrue(results.get(i).isSuccess());
+		
+		//il faut que ces elements existent dans la db, on check
+		operations = new ArrayList<Operation>();
+		data = new Data();
+		data.setCategory(4);
+		data.setId(id + 4);
+		operations.add(new ReadOperation(data));
+		
+		results = kvdbs.get(0).executeOperations(operations);
+		assertEquals(1, results.size());
+		assertTrue(results.get(0).isSuccess());
+		assertEquals(5, results.get(0).getData().getListNumber().size());
+		assertEquals(5, results.get(0).getData().getListString().size());
+		assertEquals(700 + 4,  0 + results.get(0).getData().getListNumber().get(0));
+		assertEquals(701 + 4,  0 + results.get(0).getData().getListNumber().get(1));
+		assertEquals(702 + 4,  0 + results.get(0).getData().getListNumber().get(2));
+		assertEquals(703 + 4,  0 + results.get(0).getData().getListNumber().get(3));
+		assertEquals(704 + 4,  0 + results.get(0).getData().getListNumber().get(4));
+		assertEquals("s" + 4,  results.get(0).getData().getListString().get(0));
+		assertEquals("s" + 4,  results.get(0).getData().getListString().get(1));
+		assertEquals("s" + 4,  results.get(0).getData().getListString().get(2));
+		assertEquals("s" + 4,  results.get(0).getData().getListString().get(3));
+		assertEquals("s" + 4,  results.get(0).getData().getListString().get(4));
+		
+		operations = new ArrayList<Operation>();
+		data = new Data();
+		data.setCategory(5);
+		data.setId(id + 5);
+		operations.add(new ReadOperation(data));
+		
+		results = kvdbs.get(0).executeOperations(operations);
+		assertEquals(1, results.size());
+		assertTrue(results.get(0).isSuccess());
+		assertEquals(5, results.get(0).getData().getListNumber().size());
+		assertEquals(5, results.get(0).getData().getListString().size());
+		assertEquals(700 + 5,  0 + results.get(0).getData().getListNumber().get(0));
+		assertEquals(701 + 5,  0 + results.get(0).getData().getListNumber().get(1));
+		assertEquals(702 + 5,  0 + results.get(0).getData().getListNumber().get(2));
+		assertEquals(703 + 5,  0 + results.get(0).getData().getListNumber().get(3));
+		assertEquals(704 + 5,  0 + results.get(0).getData().getListNumber().get(4));
+		assertEquals("s" + 5,  results.get(0).getData().getListString().get(0));
+		assertEquals("s" + 5,  results.get(0).getData().getListString().get(1));
+		assertEquals("s" + 5,  results.get(0).getData().getListString().get(2));
+		assertEquals("s" + 5,  results.get(0).getData().getListString().get(3));
+		assertEquals("s" + 5,  results.get(0).getData().getListString().get(4));
+
+		
+		//tentative de suppression
+		datas.clear();
+		for (int i = 4; i < 7; i++) {
+			data = new Data();
+			data.setCategory(i);
+			data.setId(id + i);
+			
+			datas.add(data);
+		}
+		
+		operations.clear();
+		operations.add(new DeleteOperation(datas.get(0)));
+		operations.add(new DeleteOperation(datas.get(1)));
+		operations.add(new DeleteOperation(datas.get(2)));
+		results = kvdbs.get(0).executeOperations(operations);
+		assertEquals(3, results.size());
+		assertTrue(results.get(0).isSuccess());
+		
+		
+		//il faut que cet element ai disparu de la db, on check
+		operations = new ArrayList<Operation>();
+		data = new Data();
+		data.setCategory(category);
+		data.setId(id + 1);
+		operations.add(new ReadOperation(data));
+		results = kvdbs.get(0).executeOperations(operations);
+		
+		assertEquals(1, results.size());
+		assertTrue(! results.get(0).isSuccess());
+		
+		operations = new ArrayList<Operation>();
+		data = new Data();
+		data.setCategory(category);
+		data.setId(id + 2);
+		operations.add(new ReadOperation(data));
+		results = kvdbs.get(0).executeOperations(operations);
+		
+		assertEquals(1, results.size());
+		assertTrue(! results.get(0).isSuccess());
+		
+		//System.out.println("----------------------apres delete");
+		//kvdbs.get(0).printDB();
 	}
 	
 	
