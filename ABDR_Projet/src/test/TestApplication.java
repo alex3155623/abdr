@@ -45,14 +45,15 @@ public class TestApplication {
 			kvdbs.get(i * nbProfilePerKVDB).setRightKVDB(kvdbs.get((fakeId + nbProfilePerKVDB) % (kvdbs.size() * nbProfilePerKVDB)));
 	    }
 	    
-	    Set<Integer> keys = kvdbs.keySet();
-	    for (Integer kvdbIndex : keys) {
-	    	kvdbs.get(kvdbIndex).startDB();
-	    }
 	    
 	    //init monitors
-	    for (int i = 0; i < nbProfilePerKVDB * 2; i++) {
+	    for (int i = 0; i < nbProfilePerKVDB * 3; i++) {
 	    	monitors.put(i, new Monitor(tempList, 0));
+	    }
+	    
+	    Set<Integer> keys = kvdbs.keySet();
+	    for (Integer kvdbIndex : keys) {
+	    	//kvdbs.get(kvdbIndex).startDB();
 	    }
 	    
 	    //init applications
@@ -62,12 +63,18 @@ public class TestApplication {
 	    targetProfiles1.add(3);
 	    
 	    List<Integer> targetProfiles2 = new ArrayList<Integer>();
-	    targetProfiles2.add(4);
+	    targetProfiles2.add(2);
 	    targetProfiles2.add(5);
 	    targetProfiles2.add(6);
 	    
-	    applications.add(new Application(targetProfiles1, monitors, 2));
-	    applications.add(new Application(targetProfiles2, monitors, 2));
+	    List<Integer> targetProfiles3 = new ArrayList<Integer>();
+	    targetProfiles3.add(2);
+	    targetProfiles3.add(8);
+	    targetProfiles3.add(9);
+	    
+	    applications.add(new Application(targetProfiles1, monitors, 10, 40));
+	    applications.add(new Application(targetProfiles2, monitors, 10, 100000));
+	    applications.add(new Application(targetProfiles3, monitors, 10, 200000));
 	}
 	
 	@AfterClass
@@ -85,20 +92,25 @@ public class TestApplication {
 		
 		
 		List<Thread> applicationsThread = new ArrayList<Thread>();
-		applicationsThread.add(new Thread(applications.get(0)));
-		applicationsThread.add(new Thread(applications.get(1)));
-		
-		
-		//applicationsThread.get(0).run();
-		//kvdbs.get(0).printDB();
+		for (Application app : applications) {
+			applicationsThread.add(new Thread(app));
+		}
 		
 		for (Thread t : applicationsThread) {
-			t.run();
+			t.start();
 		}
 		
 		for (Thread t : applicationsThread) {
 			t.join();
 		}
+		System.out.println("++++++++++++++++0------------------");
+		kvdbs.get(0).printDB();
+		System.out.println("+++++++++++++++ end -------0------------------");
+		
+		
+		System.out.println("-------------1------------------");
+		kvdbs.get(5).printDB();
+		System.out.println("------ end -------1------------------");
 	}
 	
 }

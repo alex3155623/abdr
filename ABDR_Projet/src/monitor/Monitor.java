@@ -126,7 +126,7 @@ public class Monitor implements MonitorInterface{
 		ArrayList<Integer> list = new ArrayList<Integer>();
 		for(Operation op : operations){
 			currentProfile = op.getData().getCategory();
-			if ((currentProfile >= profileOffset) && (currentProfile < (profileOffset + nbProfile)))
+			if ((currentProfile >= profileOffset) && (currentProfile < (profileOffset + nbProfile) && (! list.contains(currentProfile))))
 				list.add(currentProfile);
 		}
 		

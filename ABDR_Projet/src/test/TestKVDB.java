@@ -52,14 +52,14 @@ public class TestKVDB {
 			kvdbs.get(i * nbProfilePerKVDB).setRightKVDB(kvdbs.get((fakeId + nbProfilePerKVDB) % (kvdbs.size() * nbProfilePerKVDB)));
 	    }
 	    
-	    Set<Integer> keys = kvdbs.keySet();
-	    for (Integer kvdbIndex : keys) {
-	    	kvdbs.get(kvdbIndex).startDB();
-	    }
-	    
 	    //init monitors
 	    for (int i = 0; i < nbProfilePerKVDB * 2; i++) {
 	    	monitors.put(i, new Monitor(tempList, 0));
+	    }
+	    
+	    Set<Integer> keys = kvdbs.keySet();
+	    for (Integer kvdbIndex : keys) {
+	    	kvdbs.get(kvdbIndex).startDB();
 	    }
 	}
 	

@@ -95,7 +95,11 @@ pipeline de la transaction :
 		
 
 
-
+dans kvdb : 
+	- writelock lorsque transaction
+	- writelock lorsque migration
+		- la migration implique execute transaction de migration
+		- cette migration doit writelock pendant l'envoi
 
 
 
