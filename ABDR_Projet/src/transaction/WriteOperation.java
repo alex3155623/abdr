@@ -15,4 +15,10 @@ public class WriteOperation implements Operation {
 	public Data getData() {
 		return data;
 	}
+
+
+	@Override
+	public String toString() {
+		return "WriteOperation [data=" + data + "]";
+	}
 }

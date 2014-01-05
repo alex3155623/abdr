@@ -25,7 +25,7 @@ import db.KVDBInterface;
 
 public class TestKVDB {
 	static String storeName = "kvstore";
-	static String hostName = "ari-31-201-01";
+	static String hostName = "ari-31-201-07";
 	static int hostPort = 31500;
 	static Map<Integer, KVDB> kvdbs = new HashMap<Integer, KVDB>();
 	static Map<Integer, Monitor> monitors = new HashMap<Integer, Monitor>();

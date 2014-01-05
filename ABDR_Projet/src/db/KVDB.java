@@ -220,9 +220,11 @@ public class KVDB implements KVDBInterface {
 		}
 		//single key transaction (we should have this key so we don't check)
 		else if (getTransactionProfiles(operations).size() == 1) {
-			//System.out.println(id + " single key transaction with key " + getTransactionProfiles(operations).get(0) + ", list of op = " + operations);
+			System.out.println(id + " single key transaction with key " + getTransactionProfiles(operations).get(0) + ", list of op = " + operations);
 			profileMutexes.get(operations.get(0).getData().getCategory()).readLock().lock();
+			System.out.println(id + " target locked!!!!!");
 			result = internalExecute(convertOperations(operations));
+			System.out.println(id + " exe OK");
 			profileMutexes.get(operations.get(0).getData().getCategory()).readLock().unlock();
 		}
 		else {
@@ -232,11 +234,11 @@ public class KVDB implements KVDBInterface {
 			
 			//worst case execution, we need to fetch before executing the multiple key transaction
 			if (unknownProfiles.size() != 0) {
-				//System.out.println("KVDB " + id + " migre " + getTransactionProfiles(operations) + " pour transaction");
+				System.out.println("KVDB " + id + " migre " + unknownProfiles + " pour transaction");
 				migrate(unknownProfiles);
 			}
 
-			//System.out.println("KVDB " + id + " lock transaction " + getTransactionProfiles(operations));
+			System.out.println("KVDB " + id + " lock transaction " + getTransactionProfiles(operations));
 			for (int profile : transactionProfiles) {
 				try {
 					profileMutexes.get(profile).writeLock().lock();
@@ -245,14 +247,14 @@ public class KVDB implements KVDBInterface {
 					e.printStackTrace();System.out.println("------------------------------");
 				}
 			}
-			//System.out.println("KVDB " + id + " fait transaction " + getTransactionProfiles(operations));
+			System.out.println("KVDB " + id + " fait transaction " + getTransactionProfiles(operations));
 			List<Integer> tempProfile = implodeProfiles(transactionProfiles);
 
 			//execute multikey transaction
 			result = internalExecute(convertOperations(operations, tempProfile));
 			
 			explodeProfile(tempProfile);
-			//System.out.println("KVDB " + id + " a fini transaction " + getTransactionProfiles(operations));
+			System.out.println("KVDB " + id + " a fini transaction " + getTransactionProfiles(operations));
 			
 			for (int profile : transactionProfiles) {
 				try {
@@ -305,6 +307,7 @@ public class KVDB implements KVDBInterface {
 		List<OperationResult> result = new ArrayList<OperationResult>();
 		do {
 		    try {
+		    	System.out.println(id + " tentative exe");
 				List<oracle.kv.OperationResult> res = store.execute(operations);
 				result.addAll(KVResult2OperationResult(res));
 				hasExecuted = true;
@@ -524,7 +527,7 @@ public class KVDB implements KVDBInterface {
 		List<Data> unusedData = new ArrayList<Data>();
 		unusedData.addAll(getAllDataFromProfile(profile));
 		//System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!unused data size = " + unusedData.size());
-		profileMutexes.get(profile).writeLock().lock();
+		//profileMutexes.get(profile).writeLock().lock();
 		
 		if (unusedData.size() != 0) {
 			
@@ -559,11 +562,6 @@ public class KVDB implements KVDBInterface {
 	}
 	
 	
-	@Override
-	public void injectData(List<Operation> data) {
-		executeOperations(data);
-	}
-	
 	/**
 	 * ask migration from kvdb having profiles v to me
 	 * @param profiles
@@ -575,6 +573,8 @@ public class KVDB implements KVDBInterface {
 		//ask migration of the list of profile to me
 		for (Integer profile : profiles) {
 			targetServers.add(monitorMapping.get(profile).notifyMigration(this, profile));
+			
+			//create mutex because of the future injection
 			profileMutexes.put(profile, new ReentrantReadWriteLock(true));
 		}
 		
@@ -675,12 +675,12 @@ public class KVDB implements KVDBInterface {
 						tokens.clear();
 					}
 					
-					try {
+					/*try {
 						Thread.sleep(500);
 					} catch (InterruptedException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
-					}
+					}*/
 				}
 				
 			}

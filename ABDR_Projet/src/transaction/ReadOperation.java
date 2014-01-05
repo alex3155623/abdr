@@ -15,4 +15,9 @@ public class ReadOperation implements Operation {
 		// TODO Auto-generated method stub
 		return data;
 	}
+
+	@Override
+	public String toString() {
+		return "ReadOperation [data=" + data + "]";
+	}
 }

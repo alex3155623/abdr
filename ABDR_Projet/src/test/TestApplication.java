@@ -17,7 +17,7 @@ import db.KVDB;
 
 public class TestApplication {
 	static String storeName = "kvstore";
-	static String hostName = "ari-31-201-01";
+	static String hostName = "ari-31-201-07";
 	static int hostPort = 31500;
 	static Map<Integer, KVDB> kvdbs = new HashMap<Integer, KVDB>();
 	static Map<Integer, Monitor> monitors = new HashMap<Integer, Monitor>();
@@ -53,28 +53,51 @@ public class TestApplication {
 	    
 	    Set<Integer> keys = kvdbs.keySet();
 	    for (Integer kvdbIndex : keys) {
-	    	//kvdbs.get(kvdbIndex).startDB();
+	    	kvdbs.get(kvdbIndex).startDB();
 	    }
 	    
 	    //init applications
 	    List<Integer> targetProfiles1 = new ArrayList<Integer>();
 	    targetProfiles1.add(1);
-	    targetProfiles1.add(2);
-	    targetProfiles1.add(3);
 	    
 	    List<Integer> targetProfiles2 = new ArrayList<Integer>();
-	    targetProfiles2.add(2);
-	    targetProfiles2.add(5);
-	    targetProfiles2.add(6);
+	    targetProfiles2.add(1);
 	    
 	    List<Integer> targetProfiles3 = new ArrayList<Integer>();
-	    targetProfiles3.add(2);
-	    targetProfiles3.add(8);
-	    targetProfiles3.add(9);
+	    targetProfiles3.add(1);
 	    
-	    applications.add(new Application(targetProfiles1, monitors, 10, 40));
-	    applications.add(new Application(targetProfiles2, monitors, 10, 100000));
-	    applications.add(new Application(targetProfiles3, monitors, 10, 200000));
+	    List<Integer> targetProfiles4 = new ArrayList<Integer>();
+	    targetProfiles4.add(1);
+	    
+	    List<Integer> targetProfiles5 = new ArrayList<Integer>();
+	    targetProfiles5.add(1);
+	    
+	    List<Integer> targetProfiles6 = new ArrayList<Integer>();
+	    targetProfiles6.add(1);
+	    
+	    List<Integer> targetProfiles7 = new ArrayList<Integer>();
+	    targetProfiles7.add(1);
+	    
+	    List<Integer> targetProfiles8 = new ArrayList<Integer>();
+	    targetProfiles8.add(1);
+	    
+	    List<Integer> targetProfiles9 = new ArrayList<Integer>();
+	    targetProfiles9.add(1);
+	    
+	    List<Integer> targetProfiles10 = new ArrayList<Integer>();
+	    targetProfiles10.add(1);
+	    
+	    
+	    applications.add(new Application(targetProfiles1, monitors, 10, 100000));
+	    //applications.add(new Application(targetProfiles2, monitors, 10, 200000));
+//	    applications.add(new Application(targetProfiles3, monitors, 10, 300000));
+//	    applications.add(new Application(targetProfiles4, monitors, 10, 400000));
+//	    applications.add(new Application(targetProfiles5, monitors, 10, 500000));
+//	    applications.add(new Application(targetProfiles6, monitors, 10, 600000));
+//	    applications.add(new Application(targetProfiles7, monitors, 10, 700000));
+//	    applications.add(new Application(targetProfiles8, monitors, 10, 800000));
+//	    applications.add(new Application(targetProfiles9, monitors, 10, 900000));
+//	    applications.add(new Application(targetProfiles10, monitors, 10, 1000000));
 	}
 	
 	@AfterClass
@@ -103,14 +126,14 @@ public class TestApplication {
 		for (Thread t : applicationsThread) {
 			t.join();
 		}
-		System.out.println("++++++++++++++++0------------------");
+		/*System.out.println("++++++++++++++++0------------------");
 		kvdbs.get(0).printDB();
 		System.out.println("+++++++++++++++ end -------0------------------");
 		
 		
 		System.out.println("-------------1------------------");
 		kvdbs.get(5).printDB();
-		System.out.println("------ end -------1------------------");
+		System.out.println("------ end -------1------------------");*/
 	}
 	
 }

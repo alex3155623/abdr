@@ -20,8 +20,6 @@ public interface KVDBInterface extends KVDBLoadBalancer {
 	
 	void transfuseData(int profile, KVDBInterface target);
 	
-	void injectData(List<Operation> data);
-	
 	void startDB();
 	
 	void closeDB();

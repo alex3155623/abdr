@@ -82,10 +82,12 @@ public class Monitor implements MonitorInterface{
 		
 		//get the list of needed local profiles for the transaction
 		List<Integer> usedLocalProfiles = findProfile(operations);
+		//System.out.println("***********************local profiles of the monitor : " + usedLocalProfiles + " for operations" + operations);
 		
 		//for each profiles in the transaction, read lock
 		synchronized (this) {
 			for (Integer profile : usedLocalProfiles) {
+				//System.out.println("readlock : " + profile);
 				profileMutexes.get(profile).readLock().lock();
 			}
 		}
@@ -98,6 +100,7 @@ public class Monitor implements MonitorInterface{
 		
 		synchronized (this) {
 			for (Integer profile : usedLocalProfiles) {
+				//System.out.println("readunlock : " + profile);
 				profileMutexes.get(profile).readLock().unlock();
 			}
 		}
@@ -148,6 +151,7 @@ public class Monitor implements MonitorInterface{
 	public KVDB notifyMigration(KVDB newSource, int profile) {
 		KVDB result;
 		synchronized(this) {
+			//System.out.println("trying to writelock " + profile);
 			profileMutexes.get(profile).writeLock().lock();
 		}
 		result = serverMapping.get(profile);
@@ -159,6 +163,7 @@ public class Monitor implements MonitorInterface{
 	public void notifyEndMigration(KVDB newSource, int profile){
 		serverMapping.put(profile, newSource);
 		synchronized(this) {
+			//System.out.println("trying to writeunlock " + profile);
 			profileMutexes.get(profile).writeLock().unlock();
 		}
 	}
