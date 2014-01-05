@@ -1,5 +1,6 @@
 import java.util.ArrayList;
 import java.util.List;
+import java.util.SortedMap;
 
 import oracle.kv.DurabilityException;
 import oracle.kv.FaultException;
@@ -14,7 +15,6 @@ import oracle.kv.ReturnValueVersion;
 import oracle.kv.Value;
 import oracle.kv.ValueVersion;
 import oracle.kv.Version;
-import oracle.kv.impl.api.ops.Execute.OperationFactoryImpl;
 
 //Avro formatter
 public class Exercice2 {
@@ -25,14 +25,16 @@ private static KVStore store;
     private static String hostPort = "5000";
     
     
+    /**
+     * Peuplement de la base de donnée
+     * @param store
+     */
     public static void initBase(KVStore store) {
         String value = "1";
         String categorie = "C";
         String produit = "P";
         Key key;
-        
-        //dada
-        
+
         //foreach categorie
         for (int i = 0; i < 10; i++) {
         	//foreach product
@@ -45,6 +47,10 @@ private static KVStore store;
       
     }
     
+    /**
+     * Affichage pour le débuggage
+     * @param store
+     */
     private static void printDB(KVStore store) {
     	String value = "1";
         String categorie = "C";
@@ -129,10 +135,11 @@ private static KVStore store;
         	opList.clear();
         	versionList.clear();
         	
+        	key = Key.createKey("C1");
+        	SortedMap<Key,ValueVersion> c1 = store.multiGet(key, null, null);
         	//detection du max + obtention des version des valeurs
         	for (int i = 1; i < 6; i++) {
-            	key = Key.createKey("C1", "P" + i);
-            	temp = store.get(key);
+            	temp = c1.get(Key.createKey("C1", "P" + i));
             	int quantity = Integer.parseInt(new String(temp.getValue().getValue()));
             	versionList.add(temp.getVersion());
             	
@@ -169,8 +176,8 @@ private static KVStore store;
             store = KVStoreFactory.getStore(new KVStoreConfig(storeName, hostName + ":" + hostPort));
             //initBase(store);
             //m1(store);
-            m2(store);
-            //m3(store);
+            //m2(store);
+            m3(store);
             printDB(store);
             store.close();
         } catch (Exception e) {
