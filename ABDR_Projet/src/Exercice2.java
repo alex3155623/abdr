@@ -68,7 +68,10 @@ private static KVStore store;
         }
     }
     
-    
+    /**
+     * incrementer entre P1 et P5
+     * @param store
+     */
     private static void m1(KVStore store) {
         ValueVersion valueVersion;
         Key key;
@@ -176,8 +179,8 @@ private static KVStore store;
             store = KVStoreFactory.getStore(new KVStoreConfig(storeName, hostName + ":" + hostPort));
             //initBase(store);
             //m1(store);
-            //m2(store);
-            m3(store);
+            m2(store);
+            //m3(store);
             printDB(store);
             store.close();
         } catch (Exception e) {

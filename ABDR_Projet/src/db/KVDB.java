@@ -53,8 +53,8 @@ public class KVDB implements KVDBInterface {
     
     private final int nbInt = 5;
     private final int nbString = 5;
-    private final int nbObjects = 2;
-    private final int nbProfile = 5;
+    private final int nbObjects = 0;
+    private final int nbProfile = 1000;
 
     private Map<String, KVDBInterface> neighbourKvdbs = new HashMap<String, KVDBInterface>();
     private Map<Integer, Monitor> monitorMapping = new ConcurrentHashMap<Integer, Monitor>();
@@ -220,11 +220,11 @@ public class KVDB implements KVDBInterface {
 		}
 		//single key transaction (we should have this key so we don't check)
 		else if (getTransactionProfiles(operations).size() == 1) {
-			System.out.println(id + " single key transaction with key " + getTransactionProfiles(operations).get(0) + ", list of op = " + operations);
+			//System.out.println(id + " single key transaction with key " + getTransactionProfiles(operations).get(0) + ", list of op = " + operations);
 			profileMutexes.get(operations.get(0).getData().getCategory()).readLock().lock();
-			System.out.println(id + " target locked!!!!!");
+			//System.out.println(id + " target locked!!!!!");
 			result = internalExecute(convertOperations(operations));
-			System.out.println(id + " exe OK");
+			//System.out.println(id + " exe OK");
 			profileMutexes.get(operations.get(0).getData().getCategory()).readLock().unlock();
 		}
 		else {
@@ -307,7 +307,7 @@ public class KVDB implements KVDBInterface {
 		List<OperationResult> result = new ArrayList<OperationResult>();
 		do {
 		    try {
-		    	System.out.println(id + " tentative exe");
+		    	//System.out.println(id + " tentative exe");
 				List<oracle.kv.OperationResult> res = store.execute(operations);
 				result.addAll(KVResult2OperationResult(res));
 				hasExecuted = true;

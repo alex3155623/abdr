@@ -21,16 +21,21 @@ public class Application implements Runnable {
 	private long duration;
 	private int nbIter = 0;
 	private int shift;
+	private Map<Integer, Integer> res;
+	private int id;
 	private List<Long> myTimes = new ArrayList<Long>();
 	
-	private static int globalId = 100000;
+	//private static int globalId = 100000;
+	private int globalId = 0;
 	private static Semaphore mutex = new Semaphore(1);
 	
-	public Application(List<Integer> targetProfiles, Map<Integer, Monitor> monitors, long duration, int shift) {
+	public Application(int id, Map<Integer, Integer> res, List<Integer> targetProfiles, Map<Integer, Monitor> monitors, long duration, int shift) {
+		this.id = id;
 		this.targetProfiles = targetProfiles;
 		this.monitors = monitors;
 		this.duration = duration;
 		this.shift = shift;
+		this.res = res;
 	}
 	
 	
@@ -49,20 +54,23 @@ public class Application implements Runnable {
 			long begin = System.currentTimeMillis();
 			// Création de 10 objets data avec 5 integer et 5 string 
 			List<Operation> operations = new ArrayList<Operation>();
+			globalId = 0;
 			for(int i=0;i<100;i++){
 				for (int profile : targetProfiles) {
 					Data d = new Data();
 					
-					try {
+					d.setId(globalId);
+					globalId++;
+					/*try {
 						Application.mutex.acquire();
-						d.setId(currentId);
-						currentId++;
+						d.setId(globalId);
+						globalId++;
 					} catch (InterruptedException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					} finally {
 						Application.mutex.release();
-					}
+					}*/
 					
 					d.setCategory(profile);
 					
@@ -79,10 +87,10 @@ public class Application implements Runnable {
 					// On l'ajoute à la liste des opérations
 					operations.add(new WriteOperation(d));
 				}
-				//System.out.println("inserting " + operations.get(0).getData().getCategory() + ", with id " + operations.get(0).getData().getId());
+				System.out.println("inserting " + operations.get(0).getData().getCategory() + ", with id " + operations.get(0).getData().getId());
 				// On demande au monitor d'executer les opérations
 			}
-			System.out.println("tentative transaction");
+			//System.out.println("tentative transaction");
 			monitors.get(targetProfiles.get(0)).executeOperations(operations);
 			long end = System.currentTimeMillis();
 			myTimes.add(end - begin);
@@ -91,13 +99,13 @@ public class Application implements Runnable {
 			nbIter++;
 		}
 		
-		long total = 0;
+		double total = 0;
 		for (long curr : myTimes) {
 			total += curr;
 		}
-		total /= nbIter;
+		total = total / nbIter * 1.0;
 		
-		System.out.println("total : " + total);
+		res.put(id, (int) total);
 	}
 	
 	public void accessData() {
