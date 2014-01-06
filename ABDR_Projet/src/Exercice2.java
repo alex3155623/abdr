@@ -17,11 +17,27 @@ import oracle.kv.ValueVersion;
 import oracle.kv.Version;
 
 //Avro formatter
+/**
+ * Exercice TME kvstore
+ *
+ */
 public class Exercice2 {
-private static KVStore store;
-    
+	
+	/**
+	 * Base de donnee kvstore
+	 */
+	private static KVStore store;
+    /**
+     * Nom de la base
+     */
     private static String storeName = "kvstore";
+    /**
+     * Nom de l'host : localhost si en local
+     */
     private static String hostName = "localhost";
+    /**
+     * Numéro du port utilisé
+     */
     private static String hostPort = "5000";
     
     
@@ -69,7 +85,7 @@ private static KVStore store;
     }
     
     /**
-     * incrementer entre P1 et P5
+     * Méthode M1
      * @param store
      */
     private static void m1(KVStore store) {
@@ -89,25 +105,30 @@ private static KVStore store;
         }
     }
     
-    
+    /**
+     * Méthode M2
+     * @param store
+     */
     private static void m2(KVStore store) {
     	ValueVersion valueVersion;
         Key key;
         int max = 0;
 
         for (int i = 0; i < 1000; i++) {
+        	// de p1 a P6 detecter valeur max
         	for (int j = 1; j < 6; j++) {
         		key = Key.createKey("C1", "P" + j);
         		valueVersion = store.get(key);
         		int quantity = Integer.parseInt(new String(valueVersion.getValue().getValue()));
-        		
+        		// si max null alors prends la premiere valeur 
         		if (j == 1) {
         			max = quantity;
         			continue;
         		}
+        		// Si la quantite est superieur au max, on change la valeur de ce dernier
         		max = (max < quantity) ? quantity : max;
         	}
-        	
+        	// on ajoute la valeur (max+1) de p1 a P6
         	for (int j = 1; j < 6; j++) {
         		key = Key.createKey("C1", "P" + j);
         		
@@ -116,11 +137,14 @@ private static KVStore store;
         }
     }
     
-    // clé principale = major component
-    // clé secondaire = minor component
-    // voir multiget
-    // operation factory
-    // transaction = execute (lsite d'operation)
+    /**
+     * Methode M3
+     * cle principale = major component
+     * cle secondaire = minor component
+     * voir multiget, operation factory
+     * transaction = execute (liste operation)
+     * @param store
+     */
     private static void m3(KVStore store) {
     	Value value;
     	ValueVersion temp;
@@ -160,7 +184,7 @@ private static KVStore store;
         		value = Value.createValue(("" + (max + 1)).getBytes());
         		opList.add(opFactory.createPutIfVersion(key, value, versionList.get(i-1), ReturnValueVersion.Choice.VALUE, true));
         	}
-        	
+        	// execution de la transaction
             try {
 				store.execute(opList);
 			} catch (DurabilityException e) {
