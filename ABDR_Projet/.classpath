@@ -2,6 +2,7 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="lib" path="/users/nfs/Vrac/2600705/KV/kv-ce-2.1.54/kv-2.1.54/lib/avro.jar"/>
 	<classpathentry kind="lib" path="/users/nfs/Vrac/2600705/KV/kv-ce-2.1.54/kv-2.1.54/lib/gwt-servlet.jar"/>
 	<classpathentry kind="lib" path="/users/nfs/Vrac/2600705/KV/kv-ce-2.1.54/kv-2.1.54/lib/jackson-core-asl.jar"/>
@@ -22,6 +23,5 @@
 	<classpathentry kind="lib" path="/users/nfs/Vrac/2600705/KV/kv-ce-2.1.54/kv-2.1.54/lib/kvclient.jar"/>
 	<classpathentry kind="lib" path="/users/nfs/Vrac/2600705/KV/kv-ce-2.1.54/kv-2.1.54/lib/kvstore.jar"/>
 	<classpathentry kind="lib" path="/users/nfs/Vrac/2600705/KV/kv-ce-2.1.54/kv-2.1.54/lib/servlet-api.jar"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -1,11 +1,17 @@
 package transaction;
 
+import java.io.Serializable;
+
 /**
  * Contient le résultat d'une transaction, ainsi que la valeur de retour
  * @author 2600705
  *
  */
-public class OperationResult {
+public class OperationResult implements Serializable {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private boolean isSuccess = false;
 	private Data data;
 

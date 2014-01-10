@@ -1,5 +1,8 @@
 package application;
 
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -11,13 +14,13 @@ import transaction.Operation;
 import transaction.OperationResult;
 import transaction.ReadOperation;
 import transaction.WriteOperation;
-import monitor.Monitor;
+import monitor.MonitorInterface;
 
 //envoyer des transactions (ex : 100 write dans une catégorie) pendant 10 secondes
 //on suppose qu'on connait le moniteur
 public class Application implements Runnable {
 	private List<Integer> targetProfiles;
-	private Map<Integer, Monitor> monitors;
+	private Map<Integer, MonitorInterface> monitors;
 	private long duration;
 	private int nbIter = 0;
 	private int shift;
@@ -29,7 +32,7 @@ public class Application implements Runnable {
 	private int globalId = 0;
 	private static Semaphore mutex = new Semaphore(1);
 	
-	public Application(int id, Map<Integer, Integer> res, List<Integer> targetProfiles, Map<Integer, Monitor> monitors, long duration, int shift) {
+	public Application(int id, Map<Integer, Integer> res, List<Integer> targetProfiles, Map<Integer, MonitorInterface> monitors, long duration, int shift) {
 		this.id = id;
 		this.targetProfiles = targetProfiles;
 		this.monitors = monitors;
@@ -60,17 +63,8 @@ public class Application implements Runnable {
 					Data d = new Data();
 					
 					d.setId(globalId);
+					d.sourceId = id;
 					globalId++;
-					/*try {
-						Application.mutex.acquire();
-						d.setId(globalId);
-						globalId++;
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					} finally {
-						Application.mutex.release();
-					}*/
 					
 					d.setCategory(profile);
 					
@@ -87,11 +81,15 @@ public class Application implements Runnable {
 					// On l'ajoute à la liste des opérations
 					operations.add(new WriteOperation(d));
 				}
-				System.out.println("inserting " + operations.get(0).getData().getCategory() + ", with id " + operations.get(0).getData().getId());
+				//System.out.println("inserting " + operations.get(0).getData().getCategory() + ", with id " + operations.get(0).getData().getId());
 				// On demande au monitor d'executer les opérations
 			}
-			//System.out.println("tentative transaction");
-			monitors.get(targetProfiles.get(0)).executeOperations(operations);
+			try {
+				monitors.get(targetProfiles.get(0)).executeOperations(operations);
+			} catch (RemoteException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			long end = System.currentTimeMillis();
 			myTimes.add(end - begin);
 			System.out.println("insert ok " + nbIter);
@@ -188,7 +186,13 @@ public class Application implements Runnable {
 				//System.out.println("deleting " + operations.get(0).getData().getCategory() + ", with id " + operations.get(0).getData().getId());
 				
 				// On demande au monitor d'executer les opérations
-				List<OperationResult> res = monitors.get(targetProfiles.get(0)).executeOperations(operations);
+				List<OperationResult> res = null;
+				try {
+					res = monitors.get(targetProfiles.get(0)).executeOperations(operations);
+				} catch (RemoteException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 				
 				for (OperationResult op : res) {
 					if (! op.isSuccess())

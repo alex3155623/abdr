@@ -1,30 +1,36 @@
 package db;
 
+import java.rmi.Remote;
+import java.rmi.RemoteException;
 import java.util.List;
+import java.util.Map;
 
-import transaction.Data;
+import monitor.MonitorInterface;
 import transaction.Operation;
 import transaction.OperationResult;
 
-public interface KVDBInterface extends KVDBLoadBalancer {
+public interface KVDBInterface extends Remote {
+	
+	
 	//accept user transactions
-	List<OperationResult> executeOperations(List<Operation> operations);
+	List<OperationResult> executeOperations(List<Operation> operations) throws RemoteException;
+	
+	int getKVDBId() throws RemoteException;
+	
+	void transfuseData(int profile, KVDBInterface target) throws RemoteException;
+	
+	void startDB() throws RemoteException;
+	
+	void closeDB() throws RemoteException;
+	
+	void printDB() throws RemoteException;
+	
+	/************************/
+	void setLeftKVDB(KVDBInterface kvdbLeft) throws RemoteException;
+	void setRightKVDB(KVDBInterface kvdbRight) throws RemoteException;
+	void setMonitors(Map<Integer, MonitorInterface> monitors) throws RemoteException;
 	
 	
-	//interface to handle load balancing
-	//void créer jeton je ne fais rien et l'envoyer
-	//void attendre les jetons
-		//- le jeton contient les tables associés
-	
-	int getId();
-	
-	void transfuseData(int profile, KVDBInterface target);
-	
-	void startDB();
-	
-	void closeDB();
-	
-	void printDB();
-
-	
+	void sendToken(Map<Integer, TokenInterface> tokens) throws RemoteException;
+	void sendToken(TokenInterface token) throws RemoteException;
 }

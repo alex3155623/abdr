@@ -1,14 +1,20 @@
 package transaction;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Data {
+public class Data implements Serializable {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private int id;
 	private int category;
 	
 	private List<Integer> listNumber = new ArrayList<Integer>();
 	private List<String> listString = new ArrayList<String>();
+	public int sourceId;
 	
 	public int getId() {
 		return id;

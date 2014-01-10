@@ -1,9 +1,13 @@
 package transaction;
 
-import oracle.kv.Key;
+import java.io.Serializable;
 
-public class WriteOperation implements Operation {
+public class WriteOperation implements Operation, Serializable {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private Data data;
 
 	public WriteOperation(Data d) {

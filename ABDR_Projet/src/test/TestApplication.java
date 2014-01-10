@@ -1,5 +1,8 @@
 package test;
 
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -7,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 import monitor.Monitor;
+import monitor.MonitorInterface;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -14,41 +18,91 @@ import org.junit.Test;
 
 import application.Application;
 import db.KVDB;
+import db.KVDBInterface;
 
 public class TestApplication {
 	static String storeName = "kvstore";
-	static String hostName = "ari-31-201-07";
+	static String hostName = "ari-31-201-02";
 	static int hostPort = 31500;
-	static Map<Integer, KVDB> kvdbs = new HashMap<Integer, KVDB>();
-	static Map<Integer, Monitor> monitors = new HashMap<Integer, Monitor>();
+	static int rmiPort = 55000;
+	static Map<Integer, KVDBInterface> kvdbs = new HashMap<Integer, KVDBInterface>();
+	static Map<Integer, MonitorInterface> monitors = new HashMap<Integer, MonitorInterface>();
 	static List<Application> applications = new ArrayList<Application>();
 	static int nbProfilePerKVDB = 5;
+	static int nbKVDB = 2;
+	static int nbMonitor = 2;
+	
+	
+	private static MonitorInterface getRemoteMonitor(String monitorService, String hostName, int port) {
+		MonitorInterface targetMonitor = null;
+		try {
+		Registry myRegistry = LocateRegistry.getRegistry(hostName, port);
+		
+		targetMonitor = (MonitorInterface) myRegistry.lookup(monitorService);
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		return targetMonitor;
+	}
+	
+	private static KVDBInterface getRemoteKVDB(String kvdbService, String hostName, int port) {
+		KVDBInterface targetKVDB = null;
+		try {
+		Registry myRegistry = LocateRegistry.getRegistry(hostName, port);
+		
+		targetKVDB = (KVDBInterface) myRegistry.lookup(kvdbService);
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		return targetKVDB;
+	}
+	
 	
 	@BeforeClass
-	public static void onlyOnce() {
-		//create DBs
+	public static void onlyOnce() throws RemoteException {
 	    int temp = hostPort;
 	    
-	    
-	    List<KVDB> tempList = new ArrayList<KVDB>();
-	    for (int i = 0; i < 3; i++) {
-	    	KVDB db = new KVDB(i * nbProfilePerKVDB, storeName, hostName, new Integer(temp).toString(), monitors);
-			kvdbs.put(i * nbProfilePerKVDB, db);
-			tempList.add(db);
-			temp += 2;
+	    //create all kvdbs
+	    String kvdbServiceId = "";
+	    KVDBInterface currentKVDB= null;
+	    for (int i = 0; i < nbProfilePerKVDB * nbKVDB; i++) {
+	    	if (i % nbProfilePerKVDB == 0) {
+	    		
+		    	KVDB.startKVDB("ari-31-201-02", rmiPort, i, storeName, hostName, temp + "");
+		    	kvdbServiceId = "KVDB" + i;
+		    	currentKVDB = getRemoteKVDB(kvdbServiceId, hostName, rmiPort);
+		    	rmiPort++;
+		    	temp += 2;
+	    	}
+			kvdbs.put(i, currentKVDB);
 	    }
 	    
-	    //init neighbour
-	    for (int i = 0; i < 3; i++) {
+	    //create all monitors
+	    String monitorServiceId = "";
+	    MonitorInterface currentMonitor = null;
+	    Monitor.startMonitor(kvdbs, 0, hostName, rmiPort);
+		monitorServiceId = "monitor" + 0;
+		currentMonitor = getRemoteMonitor(monitorServiceId, hostName, rmiPort);
+		rmiPort++;
+	    for (int i = 0; i < nbProfilePerKVDB * nbMonitor; i++) {
+	    	monitors.put(i, currentMonitor);
+	    }
+	    
+	    //init neighbour of kvdbs + monitors
+	    for (int i = 0; i < nbKVDB; i++) {
 	    	int fakeId = (i * nbProfilePerKVDB) + (kvdbs.size() * nbProfilePerKVDB);
-			kvdbs.get(i * nbProfilePerKVDB).setLeftKVDB(kvdbs.get((fakeId - nbProfilePerKVDB) % (kvdbs.size() * nbProfilePerKVDB)));
-			kvdbs.get(i * nbProfilePerKVDB).setRightKVDB(kvdbs.get((fakeId + nbProfilePerKVDB) % (kvdbs.size() * nbProfilePerKVDB)));
-	    }
-	    
-	    
-	    //init monitors
-	    for (int i = 0; i < nbProfilePerKVDB * 3; i++) {
-	    	monitors.put(i, new Monitor(tempList, 0));
+			try {
+				kvdbs.get(i * nbProfilePerKVDB).setLeftKVDB(kvdbs.get((fakeId - nbProfilePerKVDB) % (kvdbs.size() * nbProfilePerKVDB)));
+				kvdbs.get(i * nbProfilePerKVDB).setRightKVDB(kvdbs.get((fakeId + nbProfilePerKVDB) % (kvdbs.size() * nbProfilePerKVDB)));
+				kvdbs.get(i * nbProfilePerKVDB).setMonitors(monitors);
+			} catch (RemoteException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 	    }
 	    
 	    Set<Integer> keys = kvdbs.keySet();
@@ -56,7 +110,7 @@ public class TestApplication {
 	    	//kvdbs.get(kvdbIndex).startDB();
 	    }
 	    
-	    //init applications
+//	    //init applications
 //	    List<Integer> targetProfiles1 = new ArrayList<Integer>();
 //	    targetProfiles1.add(1);
 //	    
@@ -96,15 +150,15 @@ public class TestApplication {
 //	    applications.add(new Application(6, targetProfiles6, monitors, 10, 6000000));
 //	    applications.add(new Application(7, targetProfiles7, monitors, 10, 7000000));
 //	    applications.add(new Application(8, targetProfiles8, monitors, 10, 8000000));
-////	    applications.add(new Application(9, targetProfiles9, monitors, 10, 9000000));
-////	    applications.add(new Application(10, targetProfiles10, monitors, 10, 10000000));
+//	    applications.add(new Application(9, targetProfiles9, monitors, 10, 9000000));
+//	    applications.add(new Application(10, targetProfiles10, monitors, 10, 10000000));
 	}
 	
 	@AfterClass
 	public static void after() {
 		Set<Integer> keys = kvdbs.keySet();
 		for (Integer dbIndex : keys) {
-			kvdbs.get(dbIndex).closeDB();
+			//kvdbs.get(dbIndex).closeDB();
 	    }
 	}
 	
@@ -151,8 +205,10 @@ public class TestApplication {
 		int nbApp = 5;
 		List<Integer> targetProfiles = new ArrayList<Integer>();
 		targetProfiles.add(1);
+		targetProfiles.add(9);
 		
 		List<Integer> targetProfiles2 = new ArrayList<Integer>();
+		targetProfiles2.add(5);
 		targetProfiles2.add(9);
 		
 		for (int i = 0; i < nbApp; i++){
