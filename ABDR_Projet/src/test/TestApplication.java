@@ -22,7 +22,7 @@ import db.KVDBInterface;
 
 public class TestApplication {
 	static String storeName = "kvstore";
-	static String hostName = "ari-31-201-02";
+	static String hostName = "ari-31-201-07";
 	static int hostPort = 31500;
 	static int rmiPort = 55000;
 	static Map<Integer, KVDBInterface> kvdbs = new HashMap<Integer, KVDBInterface>();
@@ -72,7 +72,7 @@ public class TestApplication {
 	    for (int i = 0; i < nbProfilePerKVDB * nbKVDB; i++) {
 	    	if (i % nbProfilePerKVDB == 0) {
 	    		
-		    	KVDB.startKVDB("ari-31-201-02", rmiPort, i, storeName, hostName, temp + "");
+		    	KVDB.startKVDB(hostName, rmiPort, i, storeName, hostName, temp + "");
 		    	kvdbServiceId = "KVDB" + i;
 		    	currentKVDB = getRemoteKVDB(kvdbServiceId, hostName, rmiPort);
 		    	rmiPort++;
