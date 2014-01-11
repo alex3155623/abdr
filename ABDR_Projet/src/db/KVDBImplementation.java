@@ -46,9 +46,9 @@ public class KVDBImplementation extends UnicastRemoteObject implements KVDBInter
     private final int nbString = 5;
     private final int nbObjects = 2;
     private final int nbProfile = 5;
-    private final int highLoadThreshold = 130;
-    private final int lowLoadThreshold = 50;
-    private final int loadDelegateThreshold = 50;
+    private final int highLoadThreshold = 150;
+    private final int lowLoadThreshold = 60;
+    private final int loadDelegateThreshold = 70;
 
     private Map<String, KVDBInterface> neighbourKvdbs = new HashMap<String, KVDBInterface>();
     private Map<Integer, MonitorInterface> monitorMapping = new ConcurrentHashMap<Integer, MonitorInterface>();

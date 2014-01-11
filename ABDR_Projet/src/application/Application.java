@@ -58,7 +58,7 @@ public class Application implements Runnable {
 			// Création de 10 objets data avec 5 integer et 5 string 
 			List<Operation> operations = new ArrayList<Operation>();
 			globalId = 0;
-			for(int i=0;i<100;i++){
+			for(int i=0;i<200;i++){
 				for (int profile : targetProfiles) {
 					Data d = new Data();
 					
@@ -80,16 +80,18 @@ public class Application implements Runnable {
 					
 					// On l'ajoute à la liste des opérations
 					operations.add(new WriteOperation(d));
+					
+					try {
+						monitors.get(targetProfiles.get(0)).executeOperations(operations);
+					} catch (RemoteException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 				}
 				//System.out.println("inserting " + operations.get(0).getData().getCategory() + ", with id " + operations.get(0).getData().getId());
 				// On demande au monitor d'executer les opérations
 			}
-			try {
-				monitors.get(targetProfiles.get(0)).executeOperations(operations);
-			} catch (RemoteException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			
 			long end = System.currentTimeMillis();
 			myTimes.add(end - begin);
 			//System.out.println("insert ok " + nbIter);

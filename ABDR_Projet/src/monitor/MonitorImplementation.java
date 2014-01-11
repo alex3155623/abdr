@@ -127,9 +127,9 @@ public class MonitorImplementation extends UnicastRemoteObject implements Monito
 	@Override
 	public KVDBInterface notifyLoadBalanceMigration(KVDBInterface newSource, int profile) {
 		KVDBInterface result;
-		System.out.println("trying to writelock " + profile);
+		//System.out.println("trying to writelock " + profile);
 		profileMutexes.get(profile).lockWrite();
-		System.out.println("writelock " + profile + " successful");
+		//System.out.println("writelock " + profile + " successful");
 
 		result = serverMapping.get(profile);
 		
@@ -139,19 +139,19 @@ public class MonitorImplementation extends UnicastRemoteObject implements Monito
 	@Override
 	public void notifyEndLoadBalanceMigration(KVDBInterface newSource, int profile){
 		serverMapping.put(profile, newSource);
-		System.out.println("trying to writeunlock " + profile);
+		//System.out.println("trying to writeunlock " + profile);
 		profileMutexes.get(profile).unlockWrite();
-		System.out.println("writeunlock " + profile + " successful");
+		//System.out.println("writeunlock " + profile + " successful");
 	}
 	
 
 	@Override
 	public KVDBInterface notifyStandardMigration(KVDBInterface newSource, int profile) throws RemoteException {
 		KVDBInterface result;
-		System.out.println("trying to get standard migration lock de " + profile + ", offest = " + profileOffset);
+		//System.out.println("trying to get standard migration lock de " + profile + ", offest = " + profileOffset);
 		profileMutexes.get(profile).unlockRead();
 		profileMutexes.get(profile).lockWrite();
-		System.out.println("standard migration lock OK de " + ", offest = " + profileOffset);
+		//System.out.println("standard migration lock OK de " + ", offest = " + profileOffset);
 		
 		result = serverMapping.get(profile);
 		
@@ -160,10 +160,10 @@ public class MonitorImplementation extends UnicastRemoteObject implements Monito
 
 	@Override
 	public void notifyEndStandardMigration(KVDBInterface newSource, int profile) throws RemoteException {
-		System.out.println("trying to get standard migration unlock de " + profile + ", offest = " + profileOffset);
+		//System.out.println("trying to get standard migration unlock de " + profile + ", offest = " + profileOffset);
 		profileMutexes.get(profile).lockReadAfterWrite();
 		profileMutexes.get(profile).unlockWrite();
-		System.out.println("standard migration unlock OK de " + ", offest = " + profileOffset);
+		//System.out.println("standard migration unlock OK de " + ", offest = " + profileOffset);
 	}
 	
 	

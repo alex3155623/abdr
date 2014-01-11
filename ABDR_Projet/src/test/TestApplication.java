@@ -33,7 +33,7 @@ public class TestApplication {
 	static int nbKVDBPerMonitor = 3;
 	static int nbMonitor = 2;
 	static List<KVDBInterface> allKvdbs = new ArrayList<KVDBInterface>();
-	static boolean activeLoadBalance = false;
+	static boolean activeLoadBalance = true;
 	
 	
 	private static MonitorInterface getRemoteMonitor(String monitorService, String hostName, int port) {
@@ -71,10 +71,10 @@ public class TestApplication {
 	    
 	    //create all kvdbs
 	    String kvdbServiceId = "";
+
 	    KVDBInterface currentKVDB= null;
 	    for (int i = 0; i < nbProfilePerKVDB * nbKVDB; i++) {
 	    	if (i % nbProfilePerKVDB == 0) {
-	    		
 		    	KVDB.startKVDB(hostName, rmiPort, i, storeName, hostName, temp + "");
 		    	kvdbServiceId = "KVDB" + i;
 		    	currentKVDB = getRemoteKVDB(kvdbServiceId, hostName, rmiPort);
@@ -83,6 +83,7 @@ public class TestApplication {
 		    	temp += 2;
 	    	}
 			kvdbs.put(i, currentKVDB);
+			kvdbs.get(i).getKVDBId();
 	    }
 	    
 	    //create all monitors
@@ -122,48 +123,6 @@ public class TestApplication {
 		    }
 	    }
 	    
-//	    //init applications
-//	    List<Integer> targetProfiles1 = new ArrayList<Integer>();
-//	    targetProfiles1.add(1);
-//	    
-//	    List<Integer> targetProfiles2 = new ArrayList<Integer>();
-//	    targetProfiles2.add(1);
-//	    
-//	    List<Integer> targetProfiles3 = new ArrayList<Integer>();
-//	    targetProfiles3.add(1);
-//	    
-//	    List<Integer> targetProfiles4 = new ArrayList<Integer>();
-//	    targetProfiles4.add(1);
-//	    
-//	    List<Integer> targetProfiles5 = new ArrayList<Integer>();
-//	    targetProfiles5.add(1);
-//	    
-//	    List<Integer> targetProfiles6 = new ArrayList<Integer>();
-//	    targetProfiles6.add(1);
-//	    
-//	    List<Integer> targetProfiles7 = new ArrayList<Integer>();
-//	    targetProfiles7.add(1);
-//	    
-//	    List<Integer> targetProfiles8 = new ArrayList<Integer>();
-//	    targetProfiles8.add(1);
-//	    
-//	    List<Integer> targetProfiles9 = new ArrayList<Integer>();
-//	    targetProfiles9.add(1);
-//	    
-//	    List<Integer> targetProfiles10 = new ArrayList<Integer>();
-//	    targetProfiles10.add(1);
-//	    
-//	    
-//	    applications.add(new Application(1,, targetProfiles1, monitors, 10, 1000000));
-//	    applications.add(new Application(2, targetProfiles2, monitors, 10, 2000000));
-//	    applications.add(new Application(3, targetProfiles3, monitors, 10, 3000000));
-//	    applications.add(new Application(4, targetProfiles4, monitors, 10, 4000000));
-//	    applications.add(new Application(5, targetProfiles5, monitors, 10, 5000000));
-//	    applications.add(new Application(6, targetProfiles6, monitors, 10, 6000000));
-//	    applications.add(new Application(7, targetProfiles7, monitors, 10, 7000000));
-//	    applications.add(new Application(8, targetProfiles8, monitors, 10, 8000000));
-//	    applications.add(new Application(9, targetProfiles9, monitors, 10, 9000000));
-//	    applications.add(new Application(10, targetProfiles10, monitors, 10, 10000000));
 	}
 	
 	@AfterClass
@@ -230,6 +189,21 @@ public class TestApplication {
 		List<Integer> targetProfiles4 = new ArrayList<Integer>();
 		targetProfiles4.add(4);
 		
+		List<Integer> targetProfiles5 = new ArrayList<Integer>();
+		targetProfiles5.add(5);
+		
+		List<Integer> targetProfiles6 = new ArrayList<Integer>();
+		targetProfiles6.add(6);
+		
+		List<Integer> targetProfiles7 = new ArrayList<Integer>();
+		targetProfiles7.add(7);
+		
+		List<Integer> targetProfiles8 = new ArrayList<Integer>();
+		targetProfiles8.add(8);
+		
+		List<Integer> targetProfiles9 = new ArrayList<Integer>();
+		targetProfiles9.add(9);
+		
 		
 		for (int i = 0; i < nbApp; i++){
 			applicationsThread.add(new Thread(new Application((nbApp * 0) + i, res, targetProfiles0, monitors, 10, 10000000)));
@@ -237,6 +211,11 @@ public class TestApplication {
 			applicationsThread.add(new Thread(new Application((nbApp * 2) + i, res, targetProfiles2, monitors, 10, 10000000)));
 			applicationsThread.add(new Thread(new Application((nbApp * 3) + i, res, targetProfiles3, monitors, 10, 10000000)));
 			applicationsThread.add(new Thread(new Application((nbApp * 4) + i, res, targetProfiles4, monitors, 10, 10000000)));
+//			applicationsThread.add(new Thread(new Application((nbApp * 5) + i, res, targetProfiles5, monitors, 10, 10000000)));
+//			applicationsThread.add(new Thread(new Application((nbApp * 6) + i, res, targetProfiles6, monitors, 10, 10000000)));
+//			applicationsThread.add(new Thread(new Application((nbApp * 7) + i, res, targetProfiles7, monitors, 10, 10000000)));
+//			applicationsThread.add(new Thread(new Application((nbApp * 8) + i, res, targetProfiles8, monitors, 10, 10000000)));
+//			applicationsThread.add(new Thread(new Application((nbApp * 9) + i, res, targetProfiles9, monitors, 10, 10000000)));
 		}
 		
 		for (Thread t : applicationsThread) {
