@@ -92,7 +92,7 @@ public class Application implements Runnable {
 			}
 			long end = System.currentTimeMillis();
 			myTimes.add(end - begin);
-			System.out.println("insert ok " + nbIter);
+			//System.out.println("insert ok " + nbIter);
 			
 			nbIter++;
 		}
@@ -148,61 +148,61 @@ public class Application implements Runnable {
 	}
 	
 	
-	public void check() {
-		int currentId = shift;
-		for (int k = 0; k < nbIter; k++) {
-			// Création de 10 objets data avec 5 integer et 5 string 
-			for(int i=0;i<20;i++) {
-				List<Operation> operations = new ArrayList<Operation>();
-				for (int profile : targetProfiles) {
-					Data d = new Data();
-					
-					try {
-						Application.mutex.acquire();
-						currentId--;
-						d.setId(currentId);
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					} finally {
-						Application.mutex.release();
-					}
-					
-					d.setCategory(profile);
-
-					List<Integer> listNumber = new ArrayList<Integer>();
-					List<String> listString = new ArrayList<String>();
-					for(int j =0; j<5 ; j++)
-					{
-						listNumber.add(j);
-						listString.add("test"+j);
-					}
-					d.setListNumber(listNumber);
-					d.setListString(listString);
-
-					// On l'ajoute à la liste des opérations
-					operations.add(new DeleteOperation(d));
-				}
-				//System.out.println("deleting " + operations.get(0).getData().getCategory() + ", with id " + operations.get(0).getData().getId());
-				
-				// On demande au monitor d'executer les opérations
-				List<OperationResult> res = null;
-				try {
-					res = monitors.get(targetProfiles.get(0)).executeOperations(operations);
-				} catch (RemoteException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				
-				for (OperationResult op : res) {
-					if (! op.isSuccess())
-						throw new IllegalStateException("fuuuuuuuuuuuuuuuuuuuu");
-				}
-
-				currentId++;
-			}
-		}
-	}
+//	public void check() {
+//		int currentId = shift;
+//		for (int k = 0; k < nbIter; k++) {
+//			// Création de 10 objets data avec 5 integer et 5 string 
+//			for(int i=0;i<100;i++) {
+//				List<Operation> operations = new ArrayList<Operation>();
+//				for (int profile : targetProfiles) {
+//					Data d = new Data();
+//					
+//					try {
+//						Application.mutex.acquire();
+//						currentId--;
+//						d.setId(currentId);
+//					} catch (InterruptedException e) {
+//						// TODO Auto-generated catch block
+//						e.printStackTrace();
+//					} finally {
+//						Application.mutex.release();
+//					}
+//					
+//					d.setCategory(profile);
+//
+//					List<Integer> listNumber = new ArrayList<Integer>();
+//					List<String> listString = new ArrayList<String>();
+//					for(int j =0; j<5 ; j++)
+//					{
+//						listNumber.add(j);
+//						listString.add("test"+j);
+//					}
+//					d.setListNumber(listNumber);
+//					d.setListString(listString);
+//
+//					// On l'ajoute à la liste des opérations
+//					operations.add(new DeleteOperation(d));
+//				}
+//				//System.out.println("deleting " + operations.get(0).getData().getCategory() + ", with id " + operations.get(0).getData().getId());
+//				
+//				// On demande au monitor d'executer les opérations
+//				List<OperationResult> res = null;
+//				try {
+//					res = monitors.get(targetProfiles.get(0)).executeOperations(operations);
+//				} catch (RemoteException e) {
+//					// TODO Auto-generated catch block
+//					e.printStackTrace();
+//				}
+//				
+//				for (OperationResult op : res) {
+//					if (! op.isSuccess())
+//						throw new IllegalStateException("fuuuuuuuuuuuuuuuuuuuu");
+//				}
+//
+//				currentId++;
+//			}
+//		}
+//	}
 
 
 	@Override

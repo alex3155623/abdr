@@ -97,12 +97,11 @@ public class MonitorImplementation extends UnicastRemoteObject implements Monito
 		
 		//get the list of needed local profiles for the transaction
 		List<Integer> usedLocalProfiles = findProfile(operations);
-		System.out.println("***********************local profiles of the monitor : " + usedLocalProfiles + " for operations" + operations);
+		//System.out.println("***********************local profiles of the monitor : " + usedLocalProfiles + " for operations" + operations);
 		
 		//for each profiles in the transaction, read lock
 		for (Integer profile : usedLocalProfiles) {
 			profileMutexes.get(profile).lockRead();
-			System.out.println("readlock : " + profile + " of application " + operations.get(0).getData().sourceId + ", offest = " + profileOffset);
 		}
 
 		// search the good kvstore and execute operation in kvdb
@@ -118,7 +117,6 @@ public class MonitorImplementation extends UnicastRemoteObject implements Monito
 		}
 		
 		for (Integer profile : usedLocalProfiles) {
-			System.out.println("readunlock : " + profile + " of application " + operations.get(0).getData().sourceId);
 			profileMutexes.get(profile).unlockRead();
 		}
 		
@@ -146,12 +144,6 @@ public class MonitorImplementation extends UnicastRemoteObject implements Monito
 		System.out.println("writeunlock " + profile + " successful");
 	}
 	
-	
-	@Override
-	public String toString() {
-		return "Monitor [serverMapping=" + serverMapping + ", nbProfile="
-				+ nbProfile + ", profileOffset=" + profileOffset + "]";
-	}
 
 	@Override
 	public KVDBInterface notifyStandardMigration(KVDBInterface newSource, int profile) throws RemoteException {
@@ -169,9 +161,16 @@ public class MonitorImplementation extends UnicastRemoteObject implements Monito
 	@Override
 	public void notifyEndStandardMigration(KVDBInterface newSource, int profile) throws RemoteException {
 		System.out.println("trying to get standard migration unlock de " + profile + ", offest = " + profileOffset);
-		
 		profileMutexes.get(profile).lockReadAfterWrite();
 		profileMutexes.get(profile).unlockWrite();
 		System.out.println("standard migration unlock OK de " + ", offest = " + profileOffset);
+	}
+	
+	
+	
+	@Override
+	public String toString() {
+		return "Monitor [serverMapping=" + serverMapping + ", nbProfile="
+				+ nbProfile + ", profileOffset=" + profileOffset + "]";
 	}
 }

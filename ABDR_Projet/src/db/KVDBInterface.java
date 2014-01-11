@@ -15,6 +15,8 @@ public interface KVDBInterface extends Remote {
 	//accept user transactions
 	List<OperationResult> executeOperations(List<Operation> operations) throws RemoteException;
 	
+	void executeMigrationOperations(List<Operation> operations) throws RemoteException;
+	
 	int getKVDBId() throws RemoteException;
 	
 	void transfuseData(int profile, KVDBInterface target) throws RemoteException;

@@ -32,6 +32,8 @@ public class TestApplication {
 	static int nbKVDB = 3;
 	static int nbKVDBPerMonitor = 3;
 	static int nbMonitor = 2;
+	static List<KVDBInterface> allKvdbs = new ArrayList<KVDBInterface>();
+	static boolean activeLoadBalance = false;
 	
 	
 	private static MonitorInterface getRemoteMonitor(String monitorService, String hostName, int port) {
@@ -76,6 +78,7 @@ public class TestApplication {
 		    	KVDB.startKVDB(hostName, rmiPort, i, storeName, hostName, temp + "");
 		    	kvdbServiceId = "KVDB" + i;
 		    	currentKVDB = getRemoteKVDB(kvdbServiceId, hostName, rmiPort);
+		    	allKvdbs.add(currentKVDB);
 		    	rmiPort++;
 		    	temp += 2;
 	    	}
@@ -102,15 +105,21 @@ public class TestApplication {
 				kvdbs.get(tempId).setRightKVDB(kvdbs.get((tempId + nbProfilePerKVDB + (nbKVDB * nbProfilePerKVDB)) % (nbKVDB * nbProfilePerKVDB)));
 				kvdbs.get(tempId).setMonitors(monitors);
 				kvdbs.get(tempId).setSelf(kvdbs.get(tempId));
+//				System.out.println("kvdb " + kvdbs.get(tempId).getKVDBId() 
+//						+ " left = " + kvdbs.get((tempId - nbProfilePerKVDB + (nbKVDB * nbProfilePerKVDB)) % (nbKVDB * nbProfilePerKVDB)).getKVDBId()
+//						+ " right = " + kvdbs.get((tempId + nbProfilePerKVDB + (nbKVDB * nbProfilePerKVDB)) % (nbKVDB * nbProfilePerKVDB)).getKVDBId()
+//						);
 			} catch (RemoteException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 	    }
 	    
-	    Set<Integer> keys = kvdbs.keySet();
-	    for (Integer kvdbIndex : keys) {
-	    	kvdbs.get(kvdbIndex).startLoadBalance();
+	    if (activeLoadBalance) {
+		    Set<Integer> keys = kvdbs.keySet();
+		    for (KVDBInterface kvdb : allKvdbs) {
+		    	kvdb.startLoadBalance();
+		    }
 	    }
 	    
 //	    //init applications
@@ -158,11 +167,10 @@ public class TestApplication {
 	}
 	
 	@AfterClass
-	public static void after() throws RemoteException {
-		Set<Integer> keys = kvdbs.keySet();
-		for (Integer dbIndex : keys) {
-			kvdbs.get(dbIndex).closeDB();
-	    }
+	public static void after() throws RemoteException {		
+		for (KVDBInterface kvdb :allKvdbs) {
+			kvdb.closeDB();
+		}
 	}
 	
 	
@@ -205,18 +213,30 @@ public class TestApplication {
 		Map<Integer, Integer> res = new HashMap<Integer, Integer>();
 		List<Thread> applicationsThread = new ArrayList<Thread>();
 		
-		int nbApp = 2;
-		List<Integer> targetProfiles = new ArrayList<Integer>();
-		targetProfiles.add(1);
-		targetProfiles.add(9);
+		int nbApp = 1;
+		
+		List<Integer> targetProfiles0 = new ArrayList<Integer>();
+		targetProfiles0.add(0);
+		
+		List<Integer> targetProfiles1 = new ArrayList<Integer>();
+		targetProfiles1.add(1);
 		
 		List<Integer> targetProfiles2 = new ArrayList<Integer>();
-		targetProfiles2.add(5);
-		targetProfiles2.add(9);
+		targetProfiles2.add(2);
+		
+		List<Integer> targetProfiles3 = new ArrayList<Integer>();
+		targetProfiles3.add(3);
+		
+		List<Integer> targetProfiles4 = new ArrayList<Integer>();
+		targetProfiles4.add(4);
+		
 		
 		for (int i = 0; i < nbApp; i++){
-			applicationsThread.add(new Thread(new Application(i, res, targetProfiles, monitors, 10, 10000000)));
-			applicationsThread.add(new Thread(new Application(nbApp + i, res, targetProfiles2, monitors, 10, 10000000)));
+			applicationsThread.add(new Thread(new Application((nbApp * 0) + i, res, targetProfiles0, monitors, 10, 10000000)));
+			applicationsThread.add(new Thread(new Application((nbApp * 1) + i, res, targetProfiles1, monitors, 10, 10000000)));
+			applicationsThread.add(new Thread(new Application((nbApp * 2) + i, res, targetProfiles2, monitors, 10, 10000000)));
+			applicationsThread.add(new Thread(new Application((nbApp * 3) + i, res, targetProfiles3, monitors, 10, 10000000)));
+			applicationsThread.add(new Thread(new Application((nbApp * 4) + i, res, targetProfiles4, monitors, 10, 10000000)));
 		}
 		
 		for (Thread t : applicationsThread) {
@@ -227,17 +247,29 @@ public class TestApplication {
 			t.join();
 		}
 		
-		long total = 0;
+		long total0 = 0;
+		long total1 = 0;
 		long total2 = 0;
+		long total3 = 0;
+		long total4 = 0;
 		for (int i = 0; i < nbApp; i++) {
-			total += res.get(i);
-			total2 += res.get(nbApp + i);
+			total0 += res.get((nbApp * 0) + i);
+			total1 += res.get((nbApp * 1) + i);
+			total2 += res.get((nbApp * 2) + i);
+			total3 += res.get((nbApp * 3) + i);
+			total4 += res.get((nbApp * 4) + i);
 		}
-		total /= nbApp;
+		total0 /= nbApp;
+		total1 /= nbApp;
 		total2 /= nbApp;
+		total3 /= nbApp;
+		total4 /= nbApp;
 		
-		System.out.println(" !!!!!!!!!!moyenne de temps profil 1 = " + total);
+		System.out.println(" !!!!!!!!!!moyenne de temps profil 0 = " + total0);
+		System.out.println(" !!!!!!!!!!moyenne de temps profil 1 = " + total1);
 		System.out.println(" !!!!!!!!!!moyenne de temps profil 2 = " + total2);
+		System.out.println(" !!!!!!!!!!moyenne de temps profil 3 = " + total3);
+		System.out.println(" !!!!!!!!!!moyenne de temps profil 4 = " + total4);
 		
 //		System.out.println("++++++++++++++++0------------------");
 //		kvdbs.get(0).printDB();
