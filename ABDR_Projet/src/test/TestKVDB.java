@@ -99,13 +99,15 @@ public class TestKVDB {
 	    	monitors.put(i, currentMonitor);
 	    }
 	    
-	    //init neighbour of kvdbs + monitors
+	  //init neighbour of kvdbs + monitors
 	    for (int i = 0; i < nbKVDB; i++) {
-	    	int fakeId = (i * nbProfilePerKVDB) + (kvdbs.size() * nbProfilePerKVDB);
+	    	int tempId = (i * nbProfilePerKVDB);
+
 			try {
-				kvdbs.get(i * nbProfilePerKVDB).setLeftKVDB(kvdbs.get((fakeId - nbProfilePerKVDB) % (kvdbs.size() * nbProfilePerKVDB)));
-				kvdbs.get(i * nbProfilePerKVDB).setRightKVDB(kvdbs.get((fakeId + nbProfilePerKVDB) % (kvdbs.size() * nbProfilePerKVDB)));
-				kvdbs.get(i * nbProfilePerKVDB).setMonitors(monitors);
+				kvdbs.get(tempId).setLeftKVDB(kvdbs.get((tempId - nbProfilePerKVDB + (nbKVDB * nbProfilePerKVDB)) % (nbKVDB * nbProfilePerKVDB)));
+				kvdbs.get(tempId).setRightKVDB(kvdbs.get((tempId + nbProfilePerKVDB + (nbKVDB * nbProfilePerKVDB)) % (nbKVDB * nbProfilePerKVDB)));
+				kvdbs.get(tempId).setMonitors(monitors);
+				kvdbs.get(tempId).setSelf(kvdbs.get(tempId));
 			} catch (RemoteException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -114,7 +116,7 @@ public class TestKVDB {
 	    
 	    Set<Integer> keys = kvdbs.keySet();
 	    for (Integer kvdbIndex : keys) {
-	    	//kvdbs.get(kvdbIndex).startDB();
+	    	kvdbs.get(kvdbIndex).startDB();
 	    }
 	}
 	

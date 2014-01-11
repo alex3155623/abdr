@@ -29,6 +29,7 @@ public interface KVDBInterface extends Remote {
 	void setLeftKVDB(KVDBInterface kvdbLeft) throws RemoteException;
 	void setRightKVDB(KVDBInterface kvdbRight) throws RemoteException;
 	void setMonitors(Map<Integer, MonitorInterface> monitors) throws RemoteException;
+	void setSelf(KVDBInterface myself) throws RemoteException;
 	
 	
 	void sendToken(Map<Integer, TokenInterface> tokens) throws RemoteException;

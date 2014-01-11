@@ -29,7 +29,8 @@ public class TestApplication {
 	static Map<Integer, MonitorInterface> monitors = new HashMap<Integer, MonitorInterface>();
 	static List<Application> applications = new ArrayList<Application>();
 	static int nbProfilePerKVDB = 5;
-	static int nbKVDB = 2;
+	static int nbKVDB = 3;
+	static int nbKVDBPerMonitor = 3;
 	static int nbMonitor = 2;
 	
 	
@@ -94,11 +95,13 @@ public class TestApplication {
 	    
 	    //init neighbour of kvdbs + monitors
 	    for (int i = 0; i < nbKVDB; i++) {
-	    	int fakeId = (i * nbProfilePerKVDB) + (kvdbs.size() * nbProfilePerKVDB);
+	    	int tempId = (i * nbProfilePerKVDB);
+
 			try {
-				kvdbs.get(i * nbProfilePerKVDB).setLeftKVDB(kvdbs.get((fakeId - nbProfilePerKVDB) % (kvdbs.size() * nbProfilePerKVDB)));
-				kvdbs.get(i * nbProfilePerKVDB).setRightKVDB(kvdbs.get((fakeId + nbProfilePerKVDB) % (kvdbs.size() * nbProfilePerKVDB)));
-				kvdbs.get(i * nbProfilePerKVDB).setMonitors(monitors);
+				kvdbs.get(tempId).setLeftKVDB(kvdbs.get((tempId - nbProfilePerKVDB + (nbKVDB * nbProfilePerKVDB)) % (nbKVDB * nbProfilePerKVDB)));
+				kvdbs.get(tempId).setRightKVDB(kvdbs.get((tempId + nbProfilePerKVDB + (nbKVDB * nbProfilePerKVDB)) % (nbKVDB * nbProfilePerKVDB)));
+				kvdbs.get(tempId).setMonitors(monitors);
+				kvdbs.get(tempId).setSelf(kvdbs.get(tempId));
 			} catch (RemoteException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -107,7 +110,7 @@ public class TestApplication {
 	    
 	    Set<Integer> keys = kvdbs.keySet();
 	    for (Integer kvdbIndex : keys) {
-	    	//kvdbs.get(kvdbIndex).startDB();
+	    	kvdbs.get(kvdbIndex).startDB();
 	    }
 	    
 //	    //init applications
@@ -155,10 +158,10 @@ public class TestApplication {
 	}
 	
 	@AfterClass
-	public static void after() {
+	public static void after() throws RemoteException {
 		Set<Integer> keys = kvdbs.keySet();
 		for (Integer dbIndex : keys) {
-			//kvdbs.get(dbIndex).closeDB();
+			kvdbs.get(dbIndex).closeDB();
 	    }
 	}
 	
@@ -197,12 +200,12 @@ public class TestApplication {
 	*/
 	
 	@Test
-	public void testApplicationSpam2Store() throws InterruptedException {
+	public void testApplicationSpam2Store() throws InterruptedException, RemoteException {
 		
 		Map<Integer, Integer> res = new HashMap<Integer, Integer>();
 		List<Thread> applicationsThread = new ArrayList<Thread>();
 		
-		int nbApp = 5;
+		int nbApp = 2;
 		List<Integer> targetProfiles = new ArrayList<Integer>();
 		targetProfiles.add(1);
 		targetProfiles.add(9);

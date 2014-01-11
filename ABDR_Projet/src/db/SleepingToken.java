@@ -1,9 +1,14 @@
 package db;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SleepingToken implements TokenInterface {
+public class SleepingToken implements TokenInterface, Serializable {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private int id;
 	private KVDBInterface kvdb;
 	private List<Integer> profiles = new ArrayList<Integer>();

@@ -50,7 +50,7 @@ public class KVDBImplementation extends UnicastRemoteObject implements KVDBInter
     private Map<String, KVDBInterface> neighbourKvdbs = new HashMap<String, KVDBInterface>();
     private Map<Integer, MonitorInterface> monitorMapping = new ConcurrentHashMap<Integer, MonitorInterface>();
     private Map<Integer, Integer> localProfiles = new ConcurrentHashMap<Integer, Integer>();
-    private Map<Integer, ReadWriteLock> profileMutexes = new ConcurrentHashMap<Integer, ReadWriteLock>();
+    private KVDBInterface myself;
 
     private Thread loadBalancer;
     private boolean runLoadBalancer = true;
@@ -85,6 +85,11 @@ public class KVDBImplementation extends UnicastRemoteObject implements KVDBInter
 	public void setMonitors(Map<Integer, MonitorInterface> monitors) {
 		this.monitorMapping = monitors;
 	}
+	
+	@Override
+	public void setSelf(KVDBInterface myself) {
+		this.myself = myself;
+	}
 
 	public Map<String, KVDBInterface> getNeighbourKvdbs() {
 		return neighbourKvdbs;
@@ -108,7 +113,6 @@ public class KVDBImplementation extends UnicastRemoteObject implements KVDBInter
         //foreach profile
 		for (int i = id; i < (id + nbProfile); i++) {
 			localProfiles.put(i, i);
-			//profileMutexes.put(i, new ReentrantReadWriteLock(true));
 
 			//foreach object
 			for (int j = 0; j < nbObjects; j++) {
@@ -211,18 +215,13 @@ public class KVDBImplementation extends UnicastRemoteObject implements KVDBInter
 		
 		//get on a single data
 		if ((operations.size() == 1) && (operations.get(0) instanceof ReadOperation)) {
-			//profileMutexes.get(operations.get(0).getData().getCategory()).readLock().lock();
 			result = getData(operations.get(0).getData());
-			//profileMutexes.get(operations.get(0).getData().getCategory()).readLock().unlock();
 		}
 		//single key transaction (we should have this key so we don't check)
 		else if (getTransactionProfiles(operations).size() == 1) {
-			////System.out.println(id + " single key transaction with key " + getTransactionProfiles(operations).get(0) + ", list of op = " + operations);
-			//profileMutexes.get(operations.get(0).getData().getCategory()).readLock().lock();
-			////System.out.println(id + " target locked!!!!!");
+			//System.out.println(id + " single key transaction with key " + getTransactionProfiles(operations).get(0) + ", list of op = " + operations);
 			result = internalExecute(convertOperations(operations));
-			////System.out.println(id + " exe OK");
-			//profileMutexes.get(operations.get(0).getData().getCategory()).readLock().unlock();
+			//System.out.println(id + " exe OK");
 		}
 		else {
 			//multiple key transaction
@@ -235,15 +234,6 @@ public class KVDBImplementation extends UnicastRemoteObject implements KVDBInter
 				migrate(unknownProfiles, false);
 			}
 
-			//System.out.println("KVDB " + id + " lock transaction " + getTransactionProfiles(operations));
-			for (int profile : transactionProfiles) {
-				try {
-					//profileMutexes.get(profile).writeLock().lock();
-				} catch (Exception e) {
-					//System.out.println(id + " Exception trying to lock " + profile);
-					e.printStackTrace();
-				}
-			}
 			//System.out.println("KVDB " + id + " fait transaction " + getTransactionProfiles(operations));
 			List<Integer> tempProfile = implodeProfiles(transactionProfiles);
 
@@ -251,17 +241,8 @@ public class KVDBImplementation extends UnicastRemoteObject implements KVDBInter
 			result = internalExecute(convertOperations(operations, tempProfile));
 			
 			explodeProfile(tempProfile);
-			//System.out.println("KVDB " + id + " a fini transaction " + getTransactionProfiles(operations));
-			
-			for (int profile : transactionProfiles) {
-				try {
-					//profileMutexes.get(profile).writeLock().unlock();
-				} catch (Exception e) {
-					//System.out.println(id + " Exception trying to unlock " + profile + " for transaction " + transactionProfiles);
-					e.printStackTrace();
-				}
-			}
-			////System.out.println("KVDB " + id + " a totalement fini transaction " + getTransactionProfiles(operations));
+
+			//System.out.println("KVDB " + id + " a totalement fini transaction " + getTransactionProfiles(operations));
 		}
 		
 		return result;
@@ -524,8 +505,7 @@ public class KVDBImplementation extends UnicastRemoteObject implements KVDBInter
 	public void transfuseData(int profile, KVDBInterface target) throws RemoteException {
 		List<Data> unusedData = new ArrayList<Data>();
 		unusedData.addAll(getAllDataFromProfile(profile));
-		////System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!unused data size = " + unusedData.size());
-		////profileMutexes.get(profile).writeLock().lock();
+		//System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!unused data size = " + unusedData.size());
 		
 		if (unusedData.size() != 0) {
 			//data 2 transaction
@@ -534,13 +514,8 @@ public class KVDBImplementation extends UnicastRemoteObject implements KVDBInter
 				transfuseOperations.add(new WriteOperation(data));
 			}
 		
-			try {
-				//add them to target (inject)
-				target.executeOperations(transfuseOperations);
-			}catch (Exception e) {
-				//System.out.println(id + " Exception while transfusing to target, the profile " + profile);
-				e.printStackTrace();
-			}
+			//add them to target (inject)
+			target.executeOperations(transfuseOperations);
 			
 			//remove them from here (delete)
 			List<Operation> deleteOperations = new ArrayList<Operation>();
@@ -552,7 +527,6 @@ public class KVDBImplementation extends UnicastRemoteObject implements KVDBInter
 		
 		//System.out.println(id + " transfused profile " + profile + " to target " + target.getKVDBId() + ", successful");
 		localProfiles.remove(profile);
-		//profileMutexes.remove(profile);
 	}
 	
 	
@@ -576,9 +550,6 @@ public class KVDBImplementation extends UnicastRemoteObject implements KVDBInter
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			
-			//create mutex because of the future injection
-			//profileMutexes.put(profile, new ReentrantReadWriteLock(true));
 		}
 		
 		//begin migration of profiles to me
@@ -622,7 +593,7 @@ public class KVDBImplementation extends UnicastRemoteObject implements KVDBInter
 			private boolean hasThrownToken = false;
 			
 			private void throwToken() {
-					tokens.put(id, new SleepingToken(id, KVDBImplementation.this));
+					tokens.put(id, new SleepingToken(id, myself));
 					hasThrownToken = true;
 			}
 			
@@ -652,61 +623,66 @@ public class KVDBImplementation extends UnicastRemoteObject implements KVDBInter
 			@Override
 			public void run() {
 				while (runLoadBalancer) {
-					//check if we are busy, in this case, we consume the first token
-					if ((tokens.size() != 0) && hasHighLoad()) {
-						//System.out.println(KVDBImplementation.this.getKVDBId() + " tokens size = " + tokens.size());
-						int tokenIndex = tokens.entrySet().iterator().next().getKey();
-						TokenInterface token = tokens.remove(tokenIndex);
-						List<Integer> lowUsedProfiles = getLowUsedProfiles();
-						
-						token.getProfiles().addAll(lowUsedProfiles);
-						//System.out.println(KVDBImplementation.this.getKVDBId() + " is busy, consuming token " + token.getId() + " to give " + token.getProfiles());
-						try {
-							token.getKvdb().sendToken(token);
-						} catch (RemoteException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-					}
-					
-					
-					//if we have thrown our token, check if it's there to steal some jobs
-					if (hasThrownToken) {
-						if (tokens.containsKey(id)) {
-							//System.out.println(KVDBImplementation.this.id + " mon bébé :)");
-							TokenInterface token = tokens.get(id);
-							tokens.remove(token);
-							hasThrownToken = false;
-							if (! hasHighLoad() && (token.getProfiles().size() != 0)) {
-								migrate(token.getProfiles(), true);
+					synchronized (tokens) {
+
+						//check if we are busy, in this case, we consume the first token
+						if ((tokens.size() != 0) && hasHighLoad()) {
+							System.out.println("kvdb " + id + " tokens size = " + tokens.size());
+							
+							int tokenIndex = tokens.entrySet().iterator().next().getKey();
+							TokenInterface token = tokens.remove(tokenIndex);
+							List<Integer> lowUsedProfiles = getLowUsedProfiles();
+							if (token == null) System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% token == null %%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+							if (token.getProfiles() == null) System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%% token profiles == null %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+							token.getProfiles().addAll(lowUsedProfiles);
+							//System.out.println(KVDBImplementation.this.getKVDBId() + " is busy, consuming token " + token.getId() + " to give " + token.getProfiles());
+							try {
+								token.getKvdb().sendToken(token);
+							} catch (RemoteException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
 							}
-							token.setProfiles(new ArrayList<Integer>());
 						}
-					}
-					
-					//if we detect that we do nothing, throw a sleeping token
-					if ((! hasThrownToken) && hasLowLoad()) {
-						////System.out.println(KVDB.this.id + " throwing a token his sleeping token");
-						throwToken();
-					}
-					
-					if (tokens.size() != 0) {
-						//we send to our neighbours the rest of tokens
-						try {
-							neighbourKvdbs.get("right").sendToken(tokens);
-						} catch (RemoteException e) {
+						
+						
+						//if we have thrown our token, check if it's there to steal some jobs
+						if (hasThrownToken) {
+							if (tokens.containsKey(id)) {
+								System.out.println(KVDBImplementation.this.id + " mon bébé :)");
+								TokenInterface token = tokens.get(id);
+								tokens.remove(token);
+								hasThrownToken = false;
+								if (! hasHighLoad() && (token.getProfiles().size() != 0)) {
+									migrate(token.getProfiles(), true);
+								}
+								token.setProfiles(new ArrayList<Integer>());
+							}
+						}
+						
+						//if we detect that we do nothing, throw a sleeping token
+						if ((! hasThrownToken) && hasLowLoad()) {
+							System.out.println("kvdb " + id + " throwing a token his sleeping token");
+							throwToken();
+						}
+						
+						if (tokens.size() != 0) {
+							//we send to our neighbours the rest of tokens
+							try {
+								neighbourKvdbs.get("right").sendToken(tokens);
+							} catch (RemoteException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+							tokens.clear();
+						}
+						
+						/*try {
+							Thread.sleep(500);
+						} catch (InterruptedException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
-						}
-						tokens.clear();
+						}*/
 					}
-					
-					/*try {
-						Thread.sleep(500);
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}*/
 				}
 				
 			}
@@ -717,12 +693,17 @@ public class KVDBImplementation extends UnicastRemoteObject implements KVDBInter
 	
 	@Override
 	public void sendToken(Map<Integer, TokenInterface> tokens) {
-		this.tokens.putAll(tokens);
+		synchronized (tokens) {
+			this.tokens.putAll(tokens);
+		}
+		
 	}
 	
 	@Override
 	public void sendToken(TokenInterface token) {
-		this.tokens.put(token.getId(), token);
+		synchronized (tokens) {
+			this.tokens.put(token.getId(), token);
+		}
 	}
 	
 	
@@ -737,7 +718,7 @@ public class KVDBImplementation extends UnicastRemoteObject implements KVDBInter
 				ValueVersion valueVersion = profileObject.getValue();
 				Key key = profileObject.getKey();
 				
-				//System.out.println("id = " + id + " clé = " + key + ", valeur = " + new String(valueVersion.getValue().getValue()));
+				System.out.println("id = " + id + " clé = " + key + ", valeur = " + new String(valueVersion.getValue().getValue()));
 			}
 		}
     }
