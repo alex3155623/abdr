@@ -19,7 +19,7 @@ public interface KVDBInterface extends Remote {
 	
 	void transfuseData(int profile, KVDBInterface target) throws RemoteException;
 	
-	void startDB() throws RemoteException;
+	void startLoadBalance() throws RemoteException;
 	
 	void closeDB() throws RemoteException;
 	

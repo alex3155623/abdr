@@ -9,8 +9,6 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import monitor.MonitorInterface;
 import oracle.kv.DurabilityException;
@@ -588,7 +586,7 @@ public class KVDBImplementation extends UnicastRemoteObject implements KVDBInter
 	
 	
 	@Override
-	public void startDB() {
+	public void startLoadBalance() {
 		loadBalancer = new Thread(new Runnable() {
 			private boolean hasThrownToken = false;
 			
@@ -632,10 +630,8 @@ public class KVDBImplementation extends UnicastRemoteObject implements KVDBInter
 							int tokenIndex = tokens.entrySet().iterator().next().getKey();
 							TokenInterface token = tokens.remove(tokenIndex);
 							List<Integer> lowUsedProfiles = getLowUsedProfiles();
-							if (token == null) System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% token == null %%%%%%%%%%%%%%%%%%%%%%%%%%%%");
-							if (token.getProfiles() == null) System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%% token profiles == null %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 							token.getProfiles().addAll(lowUsedProfiles);
-							//System.out.println(KVDBImplementation.this.getKVDBId() + " is busy, consuming token " + token.getId() + " to give " + token.getProfiles());
+							System.out.println(KVDBImplementation.this.getKVDBId() + " is busy, consuming token " + token.getId() + " to give " + token.getProfiles());
 							try {
 								token.getKvdb().sendToken(token);
 							} catch (RemoteException e) {
@@ -693,18 +689,17 @@ public class KVDBImplementation extends UnicastRemoteObject implements KVDBInter
 	
 	@Override
 	public void sendToken(Map<Integer, TokenInterface> tokens) {
-		synchronized (tokens) {
-			this.tokens.putAll(tokens);
-		}
-		
+		this.tokens.putAll(tokens);
 	}
 	
 	@Override
 	public void sendToken(TokenInterface token) {
-		synchronized (tokens) {
-			this.tokens.put(token.getId(), token);
-		}
+		this.tokens.put(token.getId(), token);
 	}
+	
+	
+	
+	
 	
 	
 	

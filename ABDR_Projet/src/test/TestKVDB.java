@@ -116,7 +116,7 @@ public class TestKVDB {
 	    
 	    Set<Integer> keys = kvdbs.keySet();
 	    for (Integer kvdbIndex : keys) {
-	    	kvdbs.get(kvdbIndex).startDB();
+	    	kvdbs.get(kvdbIndex).startLoadBalance();
 	    }
 	}
 	
